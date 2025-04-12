@@ -12,3 +12,5 @@ jobs:
     uses: "./.github/workflows/wc-release.yml"
     permissions:
       contents: write
+    with:
+      tag: ${{ github.ref_name }}

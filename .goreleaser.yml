@@ -67,3 +67,4 @@ nfpms:
 release:
   draft: true
   replace_existing_draft: true
+  mode: keep-existing
