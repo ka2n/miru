@@ -34,16 +34,16 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 		)
 	}
 
-	// Extract owner and repo from package path
+	// Extract owner and repo from package path (already trimmed of gitlab.com/)
 	parts := strings.Split(pkgPath, "/")
-	if len(parts) < 3 {
+	if len(parts) < 2 {
 		return "", failure.New(ErrDocumentationFetch,
 			failure.Message("Invalid GitLab package path"),
 			failure.Context{"path": pkgPath},
 		)
 	}
-	owner := parts[1]
-	repo := parts[2]
+	owner := parts[0]
+	repo := parts[1]
 
 	// Get repository contents using glab api with pagination
 	cmd := exec.Command("glab", "api", fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo), "--paginate")

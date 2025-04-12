@@ -109,12 +109,19 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 		if len(parts) >= 3 {
 			// Check if the repository name contains language hints
 			repoName := strings.ToLower(parts[2])
+			trimmedPath := pkgPath
+			if strings.HasPrefix(pkgPath, "github.com/") {
+				trimmedPath = strings.TrimPrefix(pkgPath, "github.com/")
+			} else if strings.HasPrefix(pkgPath, "gitlab.com/") {
+				trimmedPath = strings.TrimPrefix(pkgPath, "gitlab.com/")
+			}
+
 			if strings.HasPrefix(repoName, "go-") ||
 				strings.HasSuffix(repoName, "-go") ||
 				strings.Contains(repoName, ".go") {
 				return DocSource{
 					Type:        SourceTypeGoPkgDev,
-					PackagePath: pkgPath,
+					PackagePath: trimmedPath,
 				}
 			}
 			if strings.HasPrefix(repoName, "rust-") ||
@@ -123,7 +130,7 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 				strings.HasSuffix(repoName, "-rs") {
 				return DocSource{
 					Type:        SourceTypeCratesIO,
-					PackagePath: pkgPath,
+					PackagePath: trimmedPath,
 				}
 			}
 			if strings.HasPrefix(repoName, "ruby-") ||
@@ -132,7 +139,7 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 				strings.HasSuffix(repoName, "-rb") {
 				return DocSource{
 					Type:        SourceTypeRubyGems,
-					PackagePath: pkgPath,
+					PackagePath: trimmedPath,
 				}
 			}
 		}
@@ -142,13 +149,13 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 	if strings.HasPrefix(pkgPath, "github.com/") {
 		return DocSource{
 			Type:        SourceTypeGitHub,
-			PackagePath: pkgPath,
+			PackagePath: strings.TrimPrefix(pkgPath, "github.com/"),
 		}
 	}
 	if strings.HasPrefix(pkgPath, "gitlab.com/") {
 		return DocSource{
 			Type:        SourceTypeGitLab,
-			PackagePath: pkgPath,
+			PackagePath: strings.TrimPrefix(pkgPath, "gitlab.com/"),
 		}
 	}
 
