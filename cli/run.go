@@ -168,7 +168,7 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 		return out, nil
 	}
 
-	if err := RunPagerWithReload(out, reloadFunc); err != nil {
+	if err := RunPagerWithReload(out, reloadFunc, docSource); err != nil {
 		return failure.Wrap(err)
 	}
 

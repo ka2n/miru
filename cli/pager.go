@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/haya14busa/go-openbrowser"
+	"github.com/ka2n/miru/api"
 )
 
 type reloadStartMsg struct{}
@@ -34,6 +36,12 @@ type searchState struct {
 	currentMatch int
 }
 
+type menuItem struct {
+	label    string       // Display name
+	shortcut string       // Shortcut key
+	action   func() error // Action to execute
+}
+
 // pagerModel represents the state for the pager UI
 type pagerModel struct {
 	viewport    viewport.Model
@@ -43,19 +51,71 @@ type pagerModel struct {
 	reloadFunc  func() (string, error)
 	reloadError string
 	isReloading bool
+
+	docSource   api.DocSource // Documentation source information
+	menuActive  bool          // Menu display state
+	menuItems   []menuItem    // Menu items
+	selectedIdx int           // Currently selected index
 }
 
 // NewPager creates a new pager model with the given content
-func NewPager(content string, reloadFunc func() (string, error)) *pagerModel {
+func NewPager(content string, reloadFunc func() (string, error), docSource api.DocSource) *pagerModel {
 	ti := textinput.New()
 	ti.Prompt = "/"
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
-	return &pagerModel{
+	m := &pagerModel{
 		content:    content,
 		reloadFunc: reloadFunc,
+		docSource:  docSource,
 		search: searchState{
 			input: ti,
+		},
+	}
+	m.setupMenuItems()
+	return m
+}
+
+func (m *pagerModel) setupMenuItems() {
+	m.menuItems = []menuItem{
+		{
+			label:    "Repository",
+			shortcut: "g",
+			action: func() error {
+				url, err := api.GetDocumentationURL(m.docSource)
+				if err != nil {
+					return err
+				}
+				return openbrowser.Start(url.String())
+			},
+		},
+		{
+			label:    "Registry",
+			shortcut: "r",
+			action: func() error {
+				// Open registry URL based on source type
+				switch m.docSource.Type {
+				case api.SourceTypeNPM:
+					return openbrowser.Start(fmt.Sprintf("https://www.npmjs.com/package/%s", m.docSource.PackagePath))
+				case api.SourceTypeCratesIO:
+					return openbrowser.Start(fmt.Sprintf("https://crates.io/crates/%s", m.docSource.PackagePath))
+				case api.SourceTypeRubyGems:
+					return openbrowser.Start(fmt.Sprintf("https://rubygems.org/gems/%s", m.docSource.PackagePath))
+				case api.SourceTypeGoPkgDev:
+					return openbrowser.Start(fmt.Sprintf("https://pkg.go.dev/%s", m.docSource.PackagePath))
+				default:
+					return fmt.Errorf("registry not available for %s", m.docSource.Type)
+				}
+			},
+		},
+		{
+			label:    "Homepage",
+			shortcut: "h",
+			action: func() error {
+				// Open package homepage
+				// Note: Homepage URL retrieval functionality will be added in the future
+				return fmt.Errorf("homepage not available")
+			},
 		},
 	}
 }
@@ -107,19 +167,41 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 			}
 		case tea.KeyType(tea.KeyEscape).String():
+			if m.menuActive {
+				m.menuActive = false
+				return m, nil
+			}
 			if len(m.search.matches) > 0 {
 				m.clearHighlights()
 				m.search.input.Reset()
 			}
 		case "j", "down":
+			if m.menuActive {
+				m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
+				return m, nil
+			}
 			m.viewport.ScrollDown(1)
 		case "k", "up":
+			if m.menuActive {
+				m.selectedIdx--
+				if m.selectedIdx < 0 {
+					m.selectedIdx = len(m.menuItems) - 1
+				}
+				return m, nil
+			}
 			m.viewport.ScrollUp(1)
 		case "f", "pagedown", "space":
 			m.viewport.ScrollDown(m.viewport.Height)
 		case "b", "pageup", "shift+space":
 			m.viewport.ScrollUp(m.viewport.Height)
 		case "g", "home":
+			if m.menuActive {
+				if err := m.menuItems[0].action(); err != nil {
+					m.reloadError = err.Error()
+				}
+				m.menuActive = false
+				return m, nil
+			}
 			m.viewport.GotoTop()
 		case "G", "end":
 			m.viewport.GotoBottom()
@@ -135,6 +217,37 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.search.matches) > 0 {
 				m.previousMatch()
 			}
+		case "tab":
+			if !m.menuActive {
+				m.menuActive = true
+				return m, nil
+			}
+			m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
+			return m, nil
+		case "enter":
+			if m.menuActive {
+				if err := m.menuItems[m.selectedIdx].action(); err != nil {
+					m.reloadError = err.Error()
+				}
+				m.menuActive = false
+				return m, nil
+			}
+		case "r":
+			if m.menuActive {
+				if err := m.menuItems[1].action(); err != nil {
+					m.reloadError = err.Error()
+				}
+				m.menuActive = false
+				return m, nil
+			}
+		case "h":
+			if m.menuActive {
+				if err := m.menuItems[2].action(); err != nil {
+					m.reloadError = err.Error()
+				}
+				m.menuActive = false
+				return m, nil
+			}
 		}
 
 	case reloadStartMsg:
@@ -147,10 +260,10 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.reloadError = msg.err.Error()
 		} else {
 			m.content = msg.content
-			m.clearHighlights() // 検索ハイライトをクリア
+			m.clearHighlights() // Clear search highlights
 			m.reloadError = ""
 		}
-		// viewportの更新を強制
+		// Force viewport update
 		return m, func() tea.Msg {
 			return tea.WindowSizeMsg{
 				Width:  m.viewport.Width,
@@ -192,11 +305,23 @@ func (m *pagerModel) View() string {
 	var help string
 	if m.search.active {
 		help = m.search.input.View()
+	} else if m.menuActive {
+		var menu strings.Builder
+		menu.WriteString("\n")
+		for i, item := range m.menuItems {
+			prefix := "  "
+			if i == m.selectedIdx {
+				prefix = "> "
+			}
+			menu.WriteString(fmt.Sprintf("%s%s (%s)\n", prefix, item.label, item.shortcut))
+		}
+		menu.WriteString("\nTab: next • Enter: execute • Esc: close")
+		help = menu.String()
 	} else {
 		baseHelp := "↑/k up • ↓/j down • space/f forward • shift+space/b back • g/home top • G/end bottom"
-		searchHelp := "/ search • n next • N previous • R reload • q quit"
+		searchHelp := "/ search • n next • N previous • R reload • Tab menu • q quit"
 		if len(m.search.matches) > 0 {
-			searchHelp = fmt.Sprintf("/ search (%d/%d) • n next • N previous • R reload • q quit",
+			searchHelp = fmt.Sprintf("/ search (%d/%d) • n next • N previous • R reload • Tab menu • q quit",
 				m.search.currentMatch+1, len(m.search.matches))
 		}
 		help = helpStyle.Render(baseHelp + " • " + searchHelp)
@@ -431,14 +556,14 @@ func (m *pagerModel) clearHighlights() {
 }
 
 // RunPager starts the pager program with the given content
-func RunPager(content string) error {
-	return RunPagerWithReload(content, nil)
+func RunPager(content string, docSource api.DocSource) error {
+	return RunPagerWithReload(content, nil, docSource)
 }
 
 // RunPagerWithReload starts the pager program with the given content and reload function
-func RunPagerWithReload(content string, reloadFunc func() (string, error)) error {
+func RunPagerWithReload(content string, reloadFunc func() (string, error), docSource api.DocSource) error {
 	p := tea.NewProgram(
-		NewPager(content, reloadFunc),
+		NewPager(content, reloadFunc, docSource),
 		tea.WithAltScreen(),
 	)
 
