@@ -48,9 +48,15 @@ func GetDocumentationURL(docSource DocSource) (*url.URL, error) {
 			pkgName = docSource.PackagePath[idx+1:]
 		}
 		rawURL = fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
+	case SourceTypeGitLab:
+		rawURL = fmt.Sprintf("https://gitlab.com/%s", docSource.PackagePath)
 	default:
-		// Return GitHub URL as fallback for unsupported sources
-		rawURL = fmt.Sprintf("https://github.com/%s", docSource.PackagePath)
+		// Return GitHub/GitLab URL based on path prefix
+		if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
+			rawURL = fmt.Sprintf("https://gitlab.com/%s", docSource.PackagePath)
+		} else {
+			rawURL = fmt.Sprintf("https://github.com/%s", docSource.PackagePath)
+		}
 	}
 
 	u, err := url.Parse(rawURL)
@@ -67,9 +73,28 @@ func GetDocumentationURL(docSource DocSource) (*url.URL, error) {
 
 // FetchDocumentation fetches documentation text for the given package from the specified source
 func FetchDocumentation(docSource DocSource) (string, error) {
-	// For GitHub repositories or unknown sources, try to fetch README
-	if docSource.Type == SourceTypeGitHub || docSource.Type == SourceTypeUnknown {
+	// For GitHub/GitLab repositories or unknown sources, try to fetch README
+	if docSource.Type == SourceTypeGitHub {
 		return FetchGitHubReadme(docSource.PackagePath)
+	}
+	if docSource.Type == SourceTypeGitLab {
+		return FetchGitLabReadme(docSource.PackagePath)
+	}
+	if docSource.Type == SourceTypeUnknown {
+		// Try GitHub first, then GitLab if GitHub fails
+		if strings.HasPrefix(docSource.PackagePath, "github.com/") {
+			return FetchGitHubReadme(docSource.PackagePath)
+		}
+		if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
+			return FetchGitLabReadme(docSource.PackagePath)
+		}
+		return "", failure.New(ErrDocumentationFetch,
+			failure.Message("Unknown documentation source"),
+			failure.Context{
+				"source": docSource.Type,
+				"pkg":    docSource.PackagePath,
+			},
+		)
 	}
 
 	// For other sources, return placeholder message for now

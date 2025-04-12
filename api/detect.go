@@ -20,6 +20,7 @@ const (
 	SourceTypeCratesIO = "crates.io"
 	SourceTypeRubyGems = "rubygems.org"
 	SourceTypeGitHub   = "github.com"
+	SourceTypeGitLab   = "gitlab.com"
 	SourceTypeUnknown  = ""
 )
 
@@ -101,8 +102,9 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 		}
 	}
 
-	// For GitHub repositories, try to detect from the path
-	if result.Type == SourceTypeGitHub || strings.HasPrefix(pkgPath, "github.com/") {
+	// For GitHub/GitLab repositories, try to detect from the path
+	if result.Type == SourceTypeGitHub || strings.HasPrefix(pkgPath, "github.com/") ||
+		result.Type == SourceTypeGitLab || strings.HasPrefix(pkgPath, "gitlab.com/") {
 		parts := strings.Split(pkgPath, "/")
 		if len(parts) >= 3 {
 			// Check if the repository name contains language hints
@@ -136,10 +138,16 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 		}
 	}
 
-	// Default to GitHub for unknown languages or GitHub paths
+	// Default to GitHub/GitLab for unknown languages or repository paths
 	if strings.HasPrefix(pkgPath, "github.com/") {
 		return DocSource{
 			Type:        SourceTypeGitHub,
+			PackagePath: pkgPath,
+		}
+	}
+	if strings.HasPrefix(pkgPath, "gitlab.com/") {
+		return DocSource{
+			Type:        SourceTypeGitLab,
 			PackagePath: pkgPath,
 		}
 	}
