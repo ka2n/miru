@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ka2n/miru/api/cache"
 	"github.com/morikuni/failure/v2"
 )
 
@@ -73,54 +74,57 @@ func GetDocumentationURL(docSource DocSource) (*url.URL, error) {
 
 // FetchDocumentation fetches documentation text for the given package from the specified source
 func FetchDocumentation(docSource DocSource) (string, error) {
-	// For GitHub/GitLab repositories or unknown sources, try to fetch README
-	if docSource.Type == SourceTypeGitHub {
-		return FetchGitHubReadme(docSource.PackagePath)
-	}
-	if docSource.Type == SourceTypeGitLab {
-		return FetchGitLabReadme(docSource.PackagePath)
-	}
-	if docSource.Type == SourceTypeUnknown {
-		// Try GitHub first, then GitLab if GitHub fails
-		if strings.HasPrefix(docSource.PackagePath, "github.com/") {
+	key := fmt.Sprintf("%s:%s", docSource.Type, docSource.PackagePath)
+	return cache.GetOrSet(key, func() (string, error) {
+		// For GitHub/GitLab repositories or unknown sources, try to fetch README
+		if docSource.Type == SourceTypeGitHub {
 			return FetchGitHubReadme(docSource.PackagePath)
 		}
-		if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
+		if docSource.Type == SourceTypeGitLab {
 			return FetchGitLabReadme(docSource.PackagePath)
 		}
-		return "", failure.New(ErrDocumentationFetch,
-			failure.Message("Unknown documentation source"),
-			failure.Context{
-				"source": docSource.Type,
-				"pkg":    docSource.PackagePath,
-			},
-		)
-	}
+		if docSource.Type == SourceTypeUnknown {
+			// Try GitHub first, then GitLab if GitHub fails
+			if strings.HasPrefix(docSource.PackagePath, "github.com/") {
+				return FetchGitHubReadme(docSource.PackagePath)
+			}
+			if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
+				return FetchGitLabReadme(docSource.PackagePath)
+			}
+			return "", failure.New(ErrDocumentationFetch,
+				failure.Message("Unknown documentation source"),
+				failure.Context{
+					"source": docSource.Type,
+					"pkg":    docSource.PackagePath,
+				},
+			)
+		}
 
-	// For other sources, return placeholder message for now
-	u, err := GetDocumentationURL(docSource)
-	if err != nil {
-		return "", failure.Wrap(err)
-	}
+		// For other sources, return placeholder message for now
+		u, err := GetDocumentationURL(docSource)
+		if err != nil {
+			return "", failure.Wrap(err)
+		}
 
-	switch docSource.Type {
-	case SourceTypeGoPkgDev:
-		return fmt.Sprintf("Go package documentation for %s\nSource: go.pkg.dev", u.String()), nil
-	case SourceTypeJSR:
-		return fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String()), nil
-	case SourceTypeNPM:
-		return FetchNPMReadme(docSource.PackagePath)
-	case SourceTypeCratesIO:
-		return FetchCratesReadme(docSource.PackagePath)
-	case SourceTypeRubyGems:
-		return FetchRubyGemsReadme(docSource.PackagePath)
-	default:
-		return "", failure.New(ErrDocumentationFetch,
-			failure.Message("Unsupported documentation source"),
-			failure.Context{
-				"source": docSource.Type,
-				"pkg":    docSource.PackagePath,
-			},
-		)
-	}
+		switch docSource.Type {
+		case SourceTypeGoPkgDev:
+			return fmt.Sprintf("Go package documentation for %s\nSource: go.pkg.dev", u.String()), nil
+		case SourceTypeJSR:
+			return fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String()), nil
+		case SourceTypeNPM:
+			return FetchNPMReadme(docSource.PackagePath)
+		case SourceTypeCratesIO:
+			return FetchCratesReadme(docSource.PackagePath)
+		case SourceTypeRubyGems:
+			return FetchRubyGemsReadme(docSource.PackagePath)
+		default:
+			return "", failure.New(ErrDocumentationFetch,
+				failure.Message("Unsupported documentation source"),
+				failure.Context{
+					"source": docSource.Type,
+					"pkg":    docSource.PackagePath,
+				},
+			)
+		}
+	})
 }

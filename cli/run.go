@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/haya14busa/go-openbrowser"
 	"github.com/ka2n/miru/api"
+	"github.com/ka2n/miru/api/cache"
 	"github.com/morikuni/failure/v2"
 	"github.com/spf13/cobra"
 )
@@ -63,6 +64,26 @@ func init() {
 	rootCmd.Flags().BoolVarP(&browserFlag, "browser", "b", false, "Display documentation in browser")
 	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
 	rootCmd.AddCommand(versionCmd)
+
+	// キャッシュコマンドの追加
+	cacheCmd := &cobra.Command{
+		Use:   "cache",
+		Short: "Cache management commands",
+	}
+	cacheClearCmd := &cobra.Command{
+		Use:   "clear",
+		Short: "Clear all cached documentation",
+		Long:  "Remove all cached documentation files from the cache directory",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cache.Clear(); err != nil {
+				return failure.Wrap(err)
+			}
+			fmt.Println("Cache cleared successfully")
+			return nil
+		},
+	}
+	cacheCmd.AddCommand(cacheClearCmd)
+	rootCmd.AddCommand(cacheCmd)
 }
 
 // Run executes the main CLI functionality
