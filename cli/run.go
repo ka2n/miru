@@ -17,8 +17,9 @@ var (
 
 	// Root command
 	rootCmd = &cobra.Command{
-		Use:   "miru [lang] [package]",
-		Short: "View package documentation",
+		Use:           "miru [lang] [package]",
+		Short:         "View package documentation",
+		SilenceErrors: true,
 		Long: `miru is a CLI tool for viewing package documentation with a man-like interface.
 It supports multiple documentation sources and can display documentation in both
 terminal and browser.
@@ -26,7 +27,17 @@ terminal and browser.
 You can specify the language in two ways:
 1. As the first argument: miru go github.com/spf13/cobra
 2. Using the --lang flag: miru --lang go github.com/spf13/cobra`,
-		Args: cobra.RangeArgs(1, 2),
+		Args: func(cmd *cobra.Command, args []string) error {
+			// サブコマンドの場合は引数チェックをスキップ
+			if cmd.CommandPath() != "miru" {
+				return nil
+			}
+			// rootコマンド直接実行時は1-2個の引数を要求
+			if len(args) < 1 || len(args) > 2 {
+				return fmt.Errorf("accepts between 1 and 2 args, but received %d", len(args))
+			}
+			return nil
+		},
 		RunE: runRoot,
 	}
 
