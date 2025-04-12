@@ -1,5 +1,7 @@
 # Changelog
 
+## [v0.0.1](https://github.com/ka2n/miru/compare/v0.0.0...v0.0.1) - 2025-04-12
+
 ## [v0.0.1](https://github.com/ka2n/miru/commits/v0.0.1) - 2025-04-12
 ### Other Changes
 - relese flow by @ka2n in https://github.com/ka2n/miru/pull/1
