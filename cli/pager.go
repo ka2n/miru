@@ -10,6 +10,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+type reloadStartMsg struct{}
+
+type reloadFinishMsg struct {
+	content string
+	err     error
+}
+
 var (
 	searchHighlight = lipgloss.NewStyle().
 			Background(lipgloss.Color("228")). // yellow
@@ -29,20 +36,24 @@ type searchState struct {
 
 // pagerModel represents the state for the pager UI
 type pagerModel struct {
-	viewport viewport.Model
-	content  string
-	ready    bool
-	search   searchState
+	viewport    viewport.Model
+	content     string
+	ready       bool
+	search      searchState
+	reloadFunc  func() (string, error)
+	reloadError string
+	isReloading bool
 }
 
 // NewPager creates a new pager model with the given content
-func NewPager(content string) *pagerModel {
+func NewPager(content string, reloadFunc func() (string, error)) *pagerModel {
 	ti := textinput.New()
 	ti.Prompt = "/"
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	ti.PlaceholderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
 	return &pagerModel{
-		content: content,
+		content:    content,
+		reloadFunc: reloadFunc,
 		search: searchState{
 			input: ti,
 		},
@@ -85,6 +96,16 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "R":
+			if m.reloadFunc != nil {
+				return m, tea.Batch(
+					func() tea.Msg { return reloadStartMsg{} },
+					func() tea.Msg {
+						content, err := m.reloadFunc()
+						return reloadFinishMsg{content: content, err: err}
+					},
+				)
+			}
 		case tea.KeyType(tea.KeyEscape).String():
 			if len(m.search.matches) > 0 {
 				m.clearHighlights()
@@ -113,6 +134,27 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "N":
 			if len(m.search.matches) > 0 {
 				m.previousMatch()
+			}
+		}
+
+	case reloadStartMsg:
+		m.isReloading = true
+		return m, nil
+
+	case reloadFinishMsg:
+		m.isReloading = false
+		if msg.err != nil {
+			m.reloadError = msg.err.Error()
+		} else {
+			m.content = msg.content
+			m.clearHighlights() // 検索ハイライトをクリア
+			m.reloadError = ""
+		}
+		// viewportの更新を強制
+		return m, func() tea.Msg {
+			return tea.WindowSizeMsg{
+				Width:  m.viewport.Width,
+				Height: m.viewport.Height + 2,
 			}
 		}
 
@@ -152,12 +194,17 @@ func (m *pagerModel) View() string {
 		help = m.search.input.View()
 	} else {
 		baseHelp := "↑/k up • ↓/j down • space/f forward • shift+space/b back • g/home top • G/end bottom"
-		searchHelp := "/ search • n next • N previous • q quit"
+		searchHelp := "/ search • n next • N previous • R reload • q quit"
 		if len(m.search.matches) > 0 {
-			searchHelp = fmt.Sprintf("/ search (%d/%d) • n next • N previous • q quit",
+			searchHelp = fmt.Sprintf("/ search (%d/%d) • n next • N previous • R reload • q quit",
 				m.search.currentMatch+1, len(m.search.matches))
 		}
 		help = helpStyle.Render(baseHelp + " • " + searchHelp)
+		if m.isReloading {
+			help += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("110")).Render("Reloading...")
+		} else if m.reloadError != "" {
+			help += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("Error: "+m.reloadError)
+		}
 	}
 	return m.viewport.View() + "\n" + help
 }
@@ -385,8 +432,13 @@ func (m *pagerModel) clearHighlights() {
 
 // RunPager starts the pager program with the given content
 func RunPager(content string) error {
+	return RunPagerWithReload(content, nil)
+}
+
+// RunPagerWithReload starts the pager program with the given content and reload function
+func RunPagerWithReload(content string, reloadFunc func() (string, error)) error {
 	p := tea.NewProgram(
-		NewPager(content),
+		NewPager(content, reloadFunc),
 		tea.WithAltScreen(),
 	)
 

@@ -126,28 +126,50 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type)
-		doc, err := api.FetchDocumentation(docSource)
-		if err != nil {
+		if err := displayDocumentation(docSource, false); err != nil {
 			return failure.Wrap(err)
 		}
+	}
 
-		// Render markdown with glamour
-		renderer, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(100),
-		)
+	return nil
+}
+
+// displayDocumentation fetches and displays documentation in the pager
+func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
+	doc, err := api.FetchDocumentation(docSource, forceUpdate)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	// Render markdown with glamour
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(100),
+	)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	out, err := renderer.Render(doc)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	// Create a reload function for the pager
+	reloadFunc := func() (string, error) {
+		doc, err := api.FetchDocumentation(docSource, true)
 		if err != nil {
-			return failure.Wrap(err)
+			return "", failure.Wrap(err)
 		}
-
 		out, err := renderer.Render(doc)
 		if err != nil {
-			return failure.Wrap(err)
+			return "", failure.Wrap(err)
 		}
+		return out, nil
+	}
 
-		if err := RunPager(out); err != nil {
-			return failure.Wrap(err)
-		}
+	if err := RunPagerWithReload(out, reloadFunc); err != nil {
+		return failure.Wrap(err)
 	}
 
 	return nil

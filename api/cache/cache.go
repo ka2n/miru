@@ -55,8 +55,8 @@ func init() {
 }
 
 // GetOrSet retrieves a value from cache or stores it if it doesn't exist
-func GetOrSet(key string, fn func() (string, error)) (string, error) {
-	return defaultCache.GetOrSet(key, fn)
+func GetOrSet(key string, fn func() (string, error), forceUpdate bool) (string, error) {
+	return defaultCache.GetOrSet(key, fn, forceUpdate)
 }
 
 // Clear removes all cached entries
@@ -101,15 +101,17 @@ func normalizeKey(key string) string {
 }
 
 // GetOrSet retrieves a value from cache or stores it if it doesn't exist
-func (c *Cache[T]) GetOrSet(key string, fn func() (T, error)) (T, error) {
+func (c *Cache[T]) GetOrSet(key string, fn func() (T, error), forceUpdate bool) (T, error) {
 	normalizedKey := normalizeKey(key)
 	path := filepath.Join(c.dir, normalizedKey+".gob")
 
-	// キャッシュの読み込み試行
-	if entry, err := c.loadEntry(path); err == nil {
-		// TTLチェック
-		if time.Since(entry.CreatedAt) < c.ttl {
-			return entry.Value, nil
+	// キャッシュの読み込み試行（forceUpdate=falseの場合のみ）
+	if !forceUpdate {
+		if entry, err := c.loadEntry(path); err == nil {
+			// TTLチェック
+			if time.Since(entry.CreatedAt) < c.ttl {
+				return entry.Value, nil
+			}
 		}
 	}
 

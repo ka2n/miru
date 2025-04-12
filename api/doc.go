@@ -73,7 +73,7 @@ func GetDocumentationURL(docSource DocSource) (*url.URL, error) {
 }
 
 // FetchDocumentation fetches documentation text for the given package from the specified source
-func FetchDocumentation(docSource DocSource) (string, error) {
+func FetchDocumentation(docSource DocSource, forceUpdate bool) (string, error) {
 	key := fmt.Sprintf("%s:%s", docSource.Type, docSource.PackagePath)
 	return cache.GetOrSet(key, func() (string, error) {
 		// For GitHub/GitLab repositories or unknown sources, try to fetch README
@@ -126,5 +126,5 @@ func FetchDocumentation(docSource DocSource) (string, error) {
 				},
 			)
 		}
-	})
+	}, forceUpdate)
 }
