@@ -1,0 +1,6 @@
+[tagpr]
+	vPrefix = true
+	releaseBranch = main
+	release = draft
+	versionFile = api/version.go
+	command = "just prerelease"

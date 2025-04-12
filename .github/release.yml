@@ -1,0 +1,17 @@
+changelog:
+  exclude:
+    labels:
+      - tagpr
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+    - title: New Features
+      labels:
+        - enhancement
+    - title: Fix bugs
+      labels:
+        - bug
+    - title: Other Changes
+      labels:
+        - "*"
