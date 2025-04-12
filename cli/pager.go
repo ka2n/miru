@@ -29,8 +29,15 @@ var (
 				Foreground(lipgloss.Color("15"))   // white
 )
 
+type inputMode int
+
+const (
+	normalMode inputMode = iota
+	searchMode
+	menuMode
+)
+
 type searchState struct {
-	active       bool
 	input        textinput.Model
 	matches      []int
 	currentMatch int
@@ -47,13 +54,13 @@ type pagerModel struct {
 	viewport    viewport.Model
 	content     string
 	ready       bool
+	inputMode   inputMode
 	search      searchState
 	reloadFunc  func() (string, error)
 	reloadError string
 	isReloading bool
 
 	docSource   api.DocSource // Documentation source information
-	menuActive  bool          // Menu display state
 	menuItems   []menuItem    // Menu items
 	selectedIdx int           // Currently selected index
 }
@@ -68,6 +75,7 @@ func NewPager(content string, reloadFunc func() (string, error), docSource api.D
 		content:    content,
 		reloadFunc: reloadFunc,
 		docSource:  docSource,
+		inputMode:  normalMode,
 		search: searchState{
 			input: ti,
 		},
@@ -134,17 +142,17 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.search.active {
+		if m.inputMode == searchMode {
 			var cmd tea.Cmd
 			switch msg.Type {
 			case tea.KeyType(tea.KeyEscape):
-				m.search.active = false
+				m.inputMode = normalMode
 				m.search.input.Reset()
 				m.clearHighlights()
 			case tea.KeyEnter:
 				if m.search.input.Value() != "" {
 					m.performSearch()
-					m.search.active = false
+					m.inputMode = normalMode
 				}
 			default:
 				m.search.input, cmd = m.search.input.Update(msg)
@@ -156,6 +164,20 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case tea.KeyType(tea.KeyEscape).String():
+			if m.inputMode != normalMode {
+				prevMode := m.inputMode
+				m.inputMode = normalMode
+				if prevMode == searchMode {
+					m.search.input.Reset()
+					m.clearHighlights()
+				}
+				return m, nil
+			}
+			if len(m.search.matches) > 0 {
+				m.clearHighlights()
+				m.search.input.Reset()
+			}
 		case "R":
 			if m.reloadFunc != nil {
 				return m, tea.Batch(
@@ -166,23 +188,14 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					},
 				)
 			}
-		case tea.KeyType(tea.KeyEscape).String():
-			if m.menuActive {
-				m.menuActive = false
-				return m, nil
-			}
-			if len(m.search.matches) > 0 {
-				m.clearHighlights()
-				m.search.input.Reset()
-			}
 		case "j", "down":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
 				return m, nil
 			}
 			m.viewport.ScrollDown(1)
 		case "k", "up":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				m.selectedIdx--
 				if m.selectedIdx < 0 {
 					m.selectedIdx = len(m.menuItems) - 1
@@ -195,18 +208,18 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b", "pageup", "shift+space":
 			m.viewport.ScrollUp(m.viewport.Height)
 		case "g", "home":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				if err := m.menuItems[0].action(); err != nil {
 					m.reloadError = err.Error()
 				}
-				m.menuActive = false
+				m.inputMode = normalMode
 				return m, nil
 			}
 			m.viewport.GotoTop()
 		case "G", "end":
 			m.viewport.GotoBottom()
 		case "/":
-			m.search.active = true
+			m.inputMode = searchMode
 			m.search.input.Focus()
 			return m, textinput.Blink
 		case "n":
@@ -218,34 +231,34 @@ func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.previousMatch()
 			}
 		case "tab":
-			if !m.menuActive {
-				m.menuActive = true
+			if m.inputMode != menuMode {
+				m.inputMode = menuMode
 				return m, nil
 			}
 			m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
 			return m, nil
 		case "enter":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				if err := m.menuItems[m.selectedIdx].action(); err != nil {
 					m.reloadError = err.Error()
 				}
-				m.menuActive = false
+				m.inputMode = normalMode
 				return m, nil
 			}
 		case "r":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				if err := m.menuItems[1].action(); err != nil {
 					m.reloadError = err.Error()
 				}
-				m.menuActive = false
+				m.inputMode = normalMode
 				return m, nil
 			}
 		case "h":
-			if m.menuActive {
+			if m.inputMode == menuMode {
 				if err := m.menuItems[2].action(); err != nil {
 					m.reloadError = err.Error()
 				}
-				m.menuActive = false
+				m.inputMode = normalMode
 				return m, nil
 			}
 		}
@@ -303,9 +316,9 @@ func (m *pagerModel) View() string {
 		PaddingLeft(2)
 
 	var help string
-	if m.search.active {
+	if m.inputMode == searchMode {
 		help = m.search.input.View()
-	} else if m.menuActive {
+	} else if m.inputMode == menuMode {
 		var menu strings.Builder
 		menu.WriteString("\n")
 		for i, item := range m.menuItems {
