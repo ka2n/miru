@@ -41,6 +41,13 @@ func GetDocumentationURL(docSource DocSource) (*url.URL, error) {
 			pkgName = docSource.PackagePath[idx+1:]
 		}
 		rawURL = fmt.Sprintf("https://crates.io/crates/%s", pkgName)
+	case SourceTypeRubyGems:
+		// For RubyGems, use only the package name without organization
+		pkgName := docSource.PackagePath
+		if idx := strings.LastIndex(docSource.PackagePath, "/"); idx != -1 {
+			pkgName = docSource.PackagePath[idx+1:]
+		}
+		rawURL = fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
 	default:
 		// Return GitHub URL as fallback for unsupported sources
 		rawURL = fmt.Sprintf("https://github.com/%s", docSource.PackagePath)
@@ -77,9 +84,11 @@ func FetchDocumentation(docSource DocSource) (string, error) {
 	case SourceTypeJSR:
 		return fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String()), nil
 	case SourceTypeNPM:
-		return fmt.Sprintf("JavaScript package documentation for %s\nSource: npmjs.com", u.String()), nil
+		return FetchNPMReadme(docSource.PackagePath)
 	case SourceTypeCratesIO:
 		return fmt.Sprintf("Rust package documentation for %s\nSource: crates.io", u.String()), nil
+	case SourceTypeRubyGems:
+		return FetchRubyGemsReadme(docSource.PackagePath)
 	default:
 		return "", failure.New(ErrDocumentationFetch,
 			failure.Message("Unsupported documentation source"),

@@ -18,6 +18,7 @@ const (
 	SourceTypeJSR      = "jsr.io"
 	SourceTypeNPM      = "npmjs.com"
 	SourceTypeCratesIO = "crates.io"
+	SourceTypeRubyGems = "rubygems.org"
 	SourceTypeGitHub   = "github.com"
 	SourceTypeUnknown  = ""
 )
@@ -42,6 +43,9 @@ var languageAliases = map[string]string{
 	"typescript": SourceTypeNPM,
 	"rust":       SourceTypeCratesIO,
 	"rs":         SourceTypeCratesIO,
+	"ruby":       SourceTypeRubyGems,
+	"rb":         SourceTypeRubyGems,
+	"gem":        SourceTypeRubyGems,
 }
 
 // DetectDocSource attempts to detect the documentation source from a package path
@@ -78,6 +82,14 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 		}
 	}
 
+	// Check for Ruby package names (from rubygems.org)
+	if result.Type == SourceTypeRubyGems {
+		return DocSource{
+			Type:        SourceTypeRubyGems,
+			PackagePath: pkgPath,
+		}
+	}
+
 	// Check for known Go package domains
 	if result.Type == SourceTypeGoPkgDev || strings.HasPrefix(pkgPath, "golang.org/") ||
 		strings.HasPrefix(pkgPath, "go.dev/") ||
@@ -109,6 +121,15 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 				strings.HasSuffix(repoName, "-rs") {
 				return DocSource{
 					Type:        SourceTypeCratesIO,
+					PackagePath: pkgPath,
+				}
+			}
+			if strings.HasPrefix(repoName, "ruby-") ||
+				strings.HasSuffix(repoName, "-ruby") ||
+				strings.HasPrefix(repoName, "rb-") ||
+				strings.HasSuffix(repoName, "-rb") {
+				return DocSource{
+					Type:        SourceTypeRubyGems,
 					PackagePath: pkgPath,
 				}
 			}

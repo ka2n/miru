@@ -9,6 +9,8 @@ A command-line tool for viewing package documentation with a man-like interface.
 - Open documentation in browser
 - Search packages and their documentation
 - Configurable browser integration
+- [] View structured documentation
+  - Show documentation from symbols, types, and functions
 
 ## Installation
 
