@@ -86,7 +86,7 @@ func FetchDocumentation(docSource DocSource) (string, error) {
 	case SourceTypeNPM:
 		return FetchNPMReadme(docSource.PackagePath)
 	case SourceTypeCratesIO:
-		return fmt.Sprintf("Rust package documentation for %s\nSource: crates.io", u.String()), nil
+		return FetchCratesReadme(docSource.PackagePath)
 	case SourceTypeRubyGems:
 		return FetchRubyGemsReadme(docSource.PackagePath)
 	default:

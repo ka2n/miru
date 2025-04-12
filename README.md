@@ -26,7 +26,7 @@ View package documentation in terminal:
 miru [package]                    # Display documentation in man-like interface
 miru [package] -b                 # Open documentation in browser
 miru [lang] [package]             # Specify package language explicitly
-miru [package] -lang [lang]       # Specify package language with flag
+miru [package] --lang [lang]       # Specify package language with flag
 ```
 
 Examples:
@@ -42,7 +42,7 @@ miru golang.org/x/sync -b
 miru go github.com/spf13/cobra
 
 # Specify language with flag
-miru github.com/spf13/cobra -lang go
+miru github.com/spf13/cobra --lang go
 ```
 
 ## Package Structure

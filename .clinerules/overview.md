@@ -43,7 +43,7 @@ github.com/ka2n/miru/
 miru [package]                    # Display documentation in man format
 miru [package] -b                 # Display documentation in browser
 miru [lang] [package]             # Specify package language explicitly
-miru [package] -lang [lang]       # Specify package language with flag
+miru [package] --lang [lang]       # Specify package language with flag
 miru version                      # Display version information
 ```
 
