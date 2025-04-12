@@ -1,0 +1,69 @@
+# yaml-language-server: $schema= https://raw.githubusercontent.com/goreleaser/goreleaser/v2.8.2/www/docs/static/schema.json
+# TODO: lint this file with `goreleaser check` on CI
+version: 2
+
+before:
+  hooks:
+    - go mod download
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    main: ./cmd/miru
+
+archives:
+  - formats: ['tar.gz']
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    format_overrides:
+      - goos: windows
+        formats: ['zip']
+    files:
+      - LICENSE
+      - CREDITS
+      - README.md
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+nfpms:
+  - id: miru-packages
+    package_name: miru
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}-1_{{ .Arch }}"
+    vendor: ka2n
+    homepage: https://github.com/ka2n/miru
+    maintainer: ka2n <ka2n@pobox.com>
+    description: A command-line tool for viewing package documentation with a man-like interface
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+    recommends:
+      - gh
+      - glab
+
+release:
+  draft: true
+  replace_existing_draft: true
