@@ -42,20 +42,15 @@ You can specify the language in two ways:
 		RunE: runRoot,
 	}
 
-	// Version information
-	Version = "dev"
-	Commit  = "none"
-	Date    = "unknown"
-
 	// Version command
 	versionCmd = &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
 		Long:  "Print detailed version information about miru",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("miru version %s\n", Version)
-			fmt.Printf("  commit: %s\n", Commit)
-			fmt.Printf("  built:  %s\n", Date)
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "miru version %s\n", api.Version)
+			fmt.Fprintf(out, "  commit: %s\n", api.VersionCommit)
 		},
 	}
 )
