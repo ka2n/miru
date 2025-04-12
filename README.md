@@ -21,8 +21,10 @@ go install github.com/ka2n/miru/cmd/miru@latest
 View package documentation in terminal:
 
 ```bash
-miru [package]           # Display documentation in man-like interface
-miru [package] -b        # Open documentation in browser
+miru [package]                    # Display documentation in man-like interface
+miru [package] -b                 # Open documentation in browser
+miru [lang] [package]             # Specify package language explicitly
+miru [package] -lang [lang]       # Specify package language with flag
 ```
 
 Examples:
@@ -33,6 +35,12 @@ miru github.com/spf13/cobra
 
 # Open documentation in browser
 miru golang.org/x/sync -b
+
+# Specify language explicitly
+miru go github.com/spf13/cobra
+
+# Specify language with flag
+miru github.com/spf13/cobra -lang go
 ```
 
 ## Package Structure

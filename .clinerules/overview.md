@@ -16,6 +16,7 @@ Provide a CLI tool for viewing package documentation with a man-like interface.
 - Implementation Language: Go
 - Browser Integration: github.com/haya14busa/go-openbrowser
 - Configuration: Environment variables (MIRU_BROWSER, MIRU_BROWSER_PATH)
+- CLI Framework: github.com/spf13/cobra
 
 ## Package Structure
 
@@ -32,21 +33,37 @@ github.com/ka2n/miru/
 - Minimize package separation (maintain simple structure)
 - Clear separation of package responsibilities
 - Extensible MCP server implementation
+- Use English for all error messages and code comments
+  - Error messages should be clear and concise
+  - Comments should follow Go's documentation conventions
 
 ## Command Structure
 
 ```bash
-miru [package]           # Display documentation in man format
-miru [package] -b        # Display documentation in browser
+miru [package]                    # Display documentation in man format
+miru [package] -b                 # Display documentation in browser
+miru [lang] [package]             # Specify package language explicitly
+miru [package] -lang [lang]       # Specify package language with flag
+miru version                      # Display version information
 ```
+
+Language detection:
+
+- Explicit language specification through command-line arguments
+- Automatic language detection from package path and repository structure
+- Fallback to GitHub documentation when language-specific source is unavailable
 
 ## Next Steps
 
-1. Implement core package functionality
-2. Implement documentation fetcher
-3. Implement man-style rendering
-4. Implement MCP server functionality
-5. Create tests
+1. Migrate to Cobra CLI framework
+   - Implement root command for documentation display
+   - Add version subcommand
+   - Integrate existing flag handling
+2. Implement core package functionality
+3. Implement documentation fetcher
+4. Implement man-style rendering
+5. Implement MCP server functionality
+6. Create tests
 
 ## License
 
