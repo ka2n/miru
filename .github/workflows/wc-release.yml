@@ -2,6 +2,11 @@ name: wc-release
 
 on:
   workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+        description: version tag with v prefix. e.g. v1.0.0
 
 permissions: {}
 
@@ -26,7 +31,12 @@ jobs:
 
       - name: goreleaser
         run: |
-          ls
           goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+      - name: update release notes # with native notes generator
+        run: |
+          gh api /repos/${{ github.repository }}/releases/generate-notes -f tag_name=${{ inputs.tag }} --jq .body | gh release edit ${{ inputs.tag }} --repo ${{ github.repository }} --draft=false --latest --notes-file=-
+        env:
+          GH_TOKEN: ${{ github.token }}
