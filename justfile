@@ -18,5 +18,6 @@ lint:
 
 [group('Release')]
 prerelease:
+    go mod tidy
     gocredits --skip-missing -w .
     git add CREDITS
