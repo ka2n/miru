@@ -11,6 +11,11 @@ test:
 setup:
     aqua i -l
 
+lint:
+    ghalint -c .ghalint.yml run
+    actionlint
+    goreleaser check
+
 [group('Release')]
 prerelease:
     gocredits --skip-missing -w .
