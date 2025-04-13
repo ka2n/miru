@@ -14,7 +14,6 @@ var (
 
 func init() {
 	if i, ok := debug.ReadBuildInfo(); ok {
-		Version = i.Main.Version
 		if vcsv, ok := lo.Find(i.Settings, func(s debug.BuildSetting) bool {
 			return s.Key == "vcs.revision"
 		}); ok {
