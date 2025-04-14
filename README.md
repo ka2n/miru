@@ -125,6 +125,7 @@ Browser integration can be configured through environment variables:
 ```bash
 MIRU_BROWSER=firefox    # Specify browser to use
 MIRU_BROWSER_PATH=/path/to/browser  # Specify browser binary path
+MIRU_NO_CACHE=1        # Disable caching
 ```
 
 By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) for browser integration.

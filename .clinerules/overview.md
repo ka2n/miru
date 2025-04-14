@@ -15,7 +15,7 @@ Provide a CLI tool for viewing package documentation with a man-like interface.
 
 - Implementation Language: Go
 - Browser Integration: github.com/pkg/browser
-- Configuration: Environment variables (MIRU_BROWSER, MIRU_BROWSER_PATH)
+- Configuration: Environment variables (MIRU_BROWSER, MIRU_BROWSER_PATH, MIRU_NO_CACHE)
 - CLI Framework: github.com/spf13/cobra
 
 ## Package Structure
@@ -71,6 +71,14 @@ Language detection:
 4. Implement man-style rendering
 5. Implement MCP server functionality
 6. Create tests
+
+## Development
+
+During development, it's recommended to disable caching by setting `MIRU_NO_CACHE=1`:
+
+```bash
+env MIRU_NO_CACHE=1 go run ./cmd/miru/...
+```
 
 ## License
 
