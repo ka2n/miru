@@ -134,7 +134,6 @@ By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) f
 
 miru supports fetching documentation from:
 
-- go.pkg.dev
 - pkg.go.dev
 - GitHub repositories
 - Local module documentation

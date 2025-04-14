@@ -11,66 +11,75 @@ type sourcePattern struct {
 	Type           SourceType     // Source type identifier
 	URLPattern     *regexp.Regexp // Pattern for matching URLs
 	CommandPattern *regexp.Regexp // Pattern for matching installation commands
+	Description    string         // Description of the source type
 }
 
 // Known patterns for package references in documentation
 var sourcePatterns = []sourcePattern{
 	{
-		Type:       SourceTypeJSR,
-		URLPattern: regexp.MustCompile(`https?://jsr\.io/@[^/]+/([^/\s]+)`),
+		Type:           SourceTypeJSR,
+		URLPattern:     regexp.MustCompile(`https?://jsr\.io/(@[^/]+/([^/\s]+))`),
+		CommandPattern: regexp.MustCompile(`jsr add (@[^\s]+)`),
+		Description:    "JSR package reference",
+	},
+	{
+		Type:           SourceTypeJSR,
+		CommandPattern: regexp.MustCompile(`deno add jsr:(@[^\s]+)`),
+		Description:    "JSR package reference for Deno",
 	},
 	{
 		Type:           SourceTypeNPM,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?npmjs\.com/package/([^/\s]+)`),
-		CommandPattern: regexp.MustCompile(`(?:npm|yarn|pnpm) (?:add|install) ([^@\s]+)`),
+		CommandPattern: regexp.MustCompile(`(?:npm|yarn|pnpm) (?:add|install|create) ([^@\s]+)`),
+		Description:    "NPM package reference",
 	},
 	{
-		Type:       SourceTypeGoPkgDev,
-		URLPattern: regexp.MustCompile(`https?://(?:pkg\.)?go\.dev/([^/\s]+)`),
+		Type:           SourceTypeGoPkgDev,
+		URLPattern:     regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
+		CommandPattern: regexp.MustCompile(`go (?:get|install|test)(?:\s-u)? ([^@\s]+)`),
+		Description:    "Go package reference",
 	},
 	{
 		Type:           SourceTypeCratesIO,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?crates\.io/crates/([^/\s]+)`),
 		CommandPattern: regexp.MustCompile(`cargo add ([^@\s]+)`),
+		Description:    "Cargo package reference",
 	},
 	{
 		Type:           SourceTypeRubyGems,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?rubygems\.org/gems/([^/\s]+)`),
 		CommandPattern: regexp.MustCompile(`gem install ([^@\s]+)`),
+		Description:    "RubyGems package reference",
 	},
 }
 
-// ExtractRelatedSources finds related documentation sources in the given content
-// by matching URLs and package installation commands.
-// It returns a deduplicated list of RelatedSource entries that match the current package.
-func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
+// extractSourcesFromURLs extracts RelatedSource entries from URLs.
+func extractSourcesFromURLs(urls []string) []RelatedSource {
 	var sources []RelatedSource
-	seen := make(map[string]bool) // For deduplication
 
-	// Extract URLs from content
-	urls := extractURLs(content)
 	for _, url := range urls {
-		if seen[url] {
-			continue
-		}
-
 		for _, pattern := range sourcePatterns {
+			if pattern.URLPattern == nil {
+				continue
+			}
 			if matches := pattern.URLPattern.FindStringSubmatch(url); len(matches) > 1 {
-				pkgName := matches[1]
-				if pkgName == currentPackage {
-					sources = append(sources, RelatedSource{
-						Type: RelatedSourceTypeFromString(pattern.Type.String()),
-						URL:  url,
-						From: "document_link",
-					})
-					seen[url] = true
-					break
-				}
+				sources = append(sources, RelatedSource{
+					Type: RelatedSourceTypeFromString(pattern.Type.String()),
+					URL:  url,
+					From: "document",
+				})
+				break
 			}
 		}
 	}
 
-	// Extract package references from installation commands
+	return sources
+}
+
+// extractSourcesFromCommands extracts RelatedSource entries from installation commands.
+func extractSourcesFromCommands(content string) []RelatedSource {
+	var sources []RelatedSource
+
 	for _, pattern := range sourcePatterns {
 		if pattern.CommandPattern == nil {
 			continue
@@ -78,21 +87,55 @@ func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
 
 		matches := pattern.CommandPattern.FindAllStringSubmatch(content, -1)
 		for _, match := range matches {
-			if len(match) > 1 && match[1] == currentPackage {
-				url := generatePackageURL(pattern.Type, currentPackage)
-				if url != "" && !seen[url] {
+			if len(match) > 1 {
+				pkgName := match[1]
+				url := generatePackageURL(pattern.Type, pkgName)
+				if url != "" {
 					sources = append(sources, RelatedSource{
 						Type: RelatedSourceTypeFromString(pattern.Type.String()),
 						URL:  url,
-						From: "document_command",
+						From: "document",
 					})
-					seen[url] = true
 				}
 			}
 		}
 	}
 
 	return sources
+}
+
+// filterAndDeduplicate filters and deduplicates RelatedSource entries.
+func filterAndDeduplicate(sources []RelatedSource, currentPackage string) []RelatedSource {
+	var filtered []RelatedSource
+	seen := make(map[string]bool)
+
+	for _, source := range sources {
+		if seen[source.URL] {
+			continue
+		}
+
+		if strings.Contains(source.URL, currentPackage) {
+			filtered = append(filtered, source)
+			seen[source.URL] = true
+		}
+	}
+
+	return filtered
+}
+
+// ExtractRelatedSources finds related documentation sources in the given content
+// by matching URLs and package installation commands.
+// It returns a deduplicated list of RelatedSource entries that match the current package.
+func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
+	// Extract URLs from content
+	urls := extractURLs(content)
+
+	// Extract sources from URLs and commands
+	sources := extractSourcesFromURLs(urls)
+	sources = append(sources, extractSourcesFromCommands(content)...)
+
+	// Filter and deduplicate sources
+	return filterAndDeduplicate(sources, currentPackage)
 }
 
 // extractURLs finds URLs in content, handling both Markdown links and raw URLs.
@@ -146,6 +189,9 @@ func generatePackageURL(sourceType SourceType, pkgName string) string {
 		return fmt.Sprintf("https://crates.io/crates/%s", pkgName)
 	case SourceTypeRubyGems:
 		return fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
+	case SourceTypeJSR:
+		return fmt.Sprintf("https://jsr.io/%s", pkgName)
+	default:
+		panic("Unsupported source type: " + sourceType)
 	}
-	return ""
 }

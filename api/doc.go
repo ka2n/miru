@@ -63,7 +63,7 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 
 			switch docSource.Type {
 			case SourceTypeGoPkgDev:
-				content = fmt.Sprintf("Go package documentation for %s\nSource: go.pkg.dev", u.String())
+				content = fmt.Sprintf("Go package documentation for %s\nSource: pkg.go.dev", u.String())
 				source = docSource
 			case SourceTypeJSR:
 				content = fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String())

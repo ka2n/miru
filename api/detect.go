@@ -41,9 +41,27 @@ func (s SourceType) IsRepository() bool {
 	}
 }
 
+func (s SourceType) IsDocumentation() bool {
+	switch s {
+	case SourceTypeGoPkgDev, SourceTypeJSR:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s SourceType) ContainRepositoryURL() bool {
+	switch s {
+	case SourceTypeGitHub, SourceTypeGitLab, SourceTypeGoPkgDev:
+		return true
+	default:
+		return false
+	}
+}
+
 // DocSource represents a documentation source with related sources and homepage
 type DocSource struct {
-	// Type represents the documentation source type (e.g., "go.pkg.dev", "npm", "jsr")
+	// Type represents the documentation source type (e.g., "pkg.go.dev", "npm", "jsr")
 	Type SourceType
 	// PackagePath represents the processed package path for the documentation source
 	PackagePath string
@@ -59,7 +77,7 @@ type RelatedSource struct {
 	Type RelatedSourceType
 	// URL represents the complete URL to the documentation
 	URL string
-	// From indicates how this source was discovered: "api", "document_link", or "document_command"
+	// From indicates how this source was discovered: "api", or "document"
 	From string
 }
 
@@ -82,7 +100,7 @@ func RelatedSourceTypeFromString(s string) RelatedSourceType {
 
 const (
 	// Documentation source types
-	SourceTypeGoPkgDev SourceType = "go.pkg.dev"
+	SourceTypeGoPkgDev SourceType = "pkg.go.dev"
 	SourceTypeJSR      SourceType = "jsr.io"
 	SourceTypeNPM      SourceType = "npmjs.com"
 	SourceTypeCratesIO SourceType = "crates.io"
@@ -160,10 +178,8 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 	}
 
 	// Check for known Go package domains
-	if result.Type == SourceTypeGoPkgDev || strings.HasPrefix(pkgPath, "golang.org/") ||
-		strings.HasPrefix(pkgPath, "go.dev/") ||
-		strings.HasPrefix(pkgPath, "pkg.go.dev/") ||
-		strings.HasPrefix(pkgPath, "go.pkg.dev/") {
+	if result.Type == SourceTypeGoPkgDev ||
+		strings.HasPrefix(pkgPath, "pkg.go.dev/") {
 		return DocSource{
 			Type:        SourceTypeGoPkgDev,
 			PackagePath: pkgPath,
@@ -177,37 +193,12 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 		if len(parts) >= 3 {
 			// Check if the repository name contains language hints
 			repoName := strings.ToLower(parts[2])
-			trimmedPath := pkgPath
-			if strings.HasPrefix(pkgPath, "github.com/") {
-				trimmedPath = strings.TrimPrefix(pkgPath, "github.com/")
-			} else if strings.HasPrefix(pkgPath, "gitlab.com/") {
-				trimmedPath = strings.TrimPrefix(pkgPath, "gitlab.com/")
-			}
-
 			if strings.HasPrefix(repoName, "go-") ||
 				strings.HasSuffix(repoName, "-go") ||
 				strings.Contains(repoName, ".go") {
 				return DocSource{
 					Type:        SourceTypeGoPkgDev,
-					PackagePath: trimmedPath,
-				}
-			}
-			if strings.HasPrefix(repoName, "rust-") ||
-				strings.HasSuffix(repoName, "-rust") ||
-				strings.HasPrefix(repoName, "rs-") ||
-				strings.HasSuffix(repoName, "-rs") {
-				return DocSource{
-					Type:        SourceTypeCratesIO,
-					PackagePath: trimmedPath,
-				}
-			}
-			if strings.HasPrefix(repoName, "ruby-") ||
-				strings.HasSuffix(repoName, "-ruby") ||
-				strings.HasPrefix(repoName, "rb-") ||
-				strings.HasSuffix(repoName, "-rb") {
-				return DocSource{
-					Type:        SourceTypeRubyGems,
-					PackagePath: trimmedPath,
+					PackagePath: pkgPath,
 				}
 			}
 		}
@@ -268,6 +259,10 @@ func (docSource DocSource) GetDocument() (*url.URL, error) {
 		}
 	}
 
+	if docSource.Type.IsDocumentation() {
+		return docSource.GetURL(), nil
+	}
+
 	return nil, nil
 }
 
@@ -276,6 +271,13 @@ func (docSource DocSource) GetDocument() (*url.URL, error) {
 func (docSource DocSource) GetRepository() (*url.URL, error) {
 	if docSource.Type.IsRepository() {
 		return docSource.GetURL(), nil
+	}
+
+	if docSource.Type.ContainRepositoryURL() {
+		u, err := url.Parse("https://" + docSource.PackagePath)
+		if err == nil {
+			return u, nil
+		}
 	}
 
 	// Check RelatedSources
@@ -353,7 +355,7 @@ func (docSource DocSource) GetURL() *url.URL {
 
 	switch docSource.Type {
 	case SourceTypeGoPkgDev:
-		rawURL = fmt.Sprintf("https://go.pkg.dev/%s", docSource.PackagePath)
+		rawURL = fmt.Sprintf("https://pkg.go.dev/%s", docSource.PackagePath)
 	case SourceTypeJSR:
 		rawURL = fmt.Sprintf("https://jsr.io/%s", docSource.PackagePath)
 	case SourceTypeNPM:
