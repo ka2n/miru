@@ -48,3 +48,5 @@ jobs:
       contents: write
     with:
       tag: ${{ needs.tagpr.outputs.tag }}
+    secrets:
+      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}

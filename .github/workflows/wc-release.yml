@@ -7,6 +7,10 @@ on:
         type: string
         required: true
         description: version tag with v prefix. e.g. v1.0.0
+    secrets:
+      TAP_GITHUB_TOKEN:
+        required: true
+        description: GitHub token to create PR for homebrew-taps
 
 permissions: {}
 
