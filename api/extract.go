@@ -35,7 +35,7 @@ var sourcePatterns = []sourcePattern{
 	},
 	{
 		Type:           SourceTypeGoPkgDev,
-		URLPattern:     regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
+		URLPattern:     regexp.MustCompile(`https?://pkg\.go\.dev/(?:badge/)?([^\s\.]+)(?:\.svg)?`),
 		CommandPattern: regexp.MustCompile(`go (?:get|install|test)(?:\s-u)? ([^@\s]+)`),
 		Description:    "Go package reference",
 	},
@@ -63,9 +63,11 @@ func extractSourcesFromURLs(urls []string) []RelatedSource {
 				continue
 			}
 			if matches := pattern.URLPattern.FindStringSubmatch(url); len(matches) > 1 {
+				pkgName := matches[1]
+				pkgUrl := generatePackageURL(pattern.Type, pkgName)
 				sources = append(sources, RelatedSource{
 					Type: RelatedSourceTypeFromString(pattern.Type.String()),
-					URL:  url,
+					URL:  pkgUrl,
 					From: "document",
 				})
 				break
@@ -127,11 +129,8 @@ func filterAndDeduplicate(sources []RelatedSource, currentPackage string) []Rela
 // by matching URLs and package installation commands.
 // It returns a deduplicated list of RelatedSource entries that match the current package.
 func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
-	// Extract URLs from content
-	urls := extractURLs(content)
-
 	// Extract sources from URLs and commands
-	sources := extractSourcesFromURLs(urls)
+	sources := extractSourcesFromURLs(extractURLs(content))
 	sources = append(sources, extractSourcesFromCommands(content)...)
 
 	// Filter and deduplicate sources
@@ -157,15 +156,24 @@ func extractURLs(content string) []string {
 			// Extract URLs from Markdown links
 			matches := mdPattern.FindAllStringSubmatch(line, -1)
 			for _, match := range matches {
-				if len(match) > 2 && !seen[match[2]] {
-					urls = append(urls, match[2])
-					seen[match[2]] = true
+				if len(match) > 2 {
+					u := match[2]
+					// strip hash fragments
+					u = strings.Split(u, "#")[0]
+
+					if seen[u] {
+						continue
+					}
+					urls = append(urls, u)
+					seen[u] = true
 				}
 			}
 		} else {
 			// Extract raw URLs from non-Markdown-link lines
 			matches := urlPattern.FindAllString(line, -1)
 			for _, url := range matches {
+				// strip hash fragments
+				url = strings.Split(url, "#")[0]
 				if !seen[url] {
 					urls = append(urls, url)
 					seen[url] = true

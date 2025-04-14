@@ -251,7 +251,8 @@ func (docSource DocSource) GetHomepage() (*url.URL, error) {
 
 func (docSource DocSource) GetDocument() (*url.URL, error) {
 	for _, source := range docSource.RelatedSources {
-		if source.Type == RelatedSourceTypeDocumentation {
+		t := SourceTypeFromString(source.Type.String())
+		if source.Type == RelatedSourceTypeDocumentation || t.IsDocumentation() {
 			u, err := url.Parse(source.URL)
 			if err == nil {
 				return u, nil

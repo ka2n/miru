@@ -27,6 +27,11 @@ type gitlabContentsResponse struct {
 // FetchGitLabReadme fetches the README content from a GitLab repository
 // Returns the content, DocSource with related sources, and any error
 func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
+	pos := strings.Index(pkgPath, "gitlab.com/")
+	if pos != -1 {
+		pkgPath = pkgPath[pos+len("gitlab.com/"):]
+	}
+
 	// Check if glab command exists
 	if _, err := exec.LookPath("glab"); err != nil {
 		return "", nil, failure.New(ErrGLabCommandNotFound,
