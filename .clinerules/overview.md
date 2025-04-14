@@ -9,7 +9,7 @@ Provide a CLI tool for viewing package documentation with a man-like interface.
 - Display documentation with man-style interface
 - Package search functionality
 - Browser-based documentation viewing
-- Support for multiple documentation sources (go.pkg.dev, pkg.go.dev, GitHub, etc.)
+- Support for multiple documentation sources (pkg.go.dev, GitHub, etc.)
 
 ## Technology Stack
 

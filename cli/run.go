@@ -19,7 +19,10 @@ type DocInfo struct {
 	PackagePath    string              `json:"package_path"`
 	URL            string              `json:"url"`
 	Homepage       string              `json:"homepage,omitempty"`
-	RelatedSources []api.RelatedSource `json:"related_sources,omitempty"`
+	Repository     string              `json:"repository,omitempty"`
+	Registry       string              `json:"registry,omitempty"`
+	Document       string              `json:"document,omitempty"`
+	RelatedSources []api.RelatedSource `json:"related_sources"`
 }
 
 var (
@@ -202,12 +205,40 @@ func displayJSON(docSource api.DocSource, writer io.Writer) error {
 		return failure.Wrap(err)
 	}
 
+	var (
+		homepage string
+		repo     string
+		registry string
+		docs     string
+	)
+
+	homeURL, _ := docSource.GetHomepage()
+	if homeURL != nil {
+		homepage = homeURL.String()
+	}
+	repoURL, _ := docSource.GetRepository()
+	if repoURL != nil {
+		repo = repoURL.String()
+	}
+	registryURL, _ := docSource.GetRegistry()
+	if registryURL != nil {
+		registry = registryURL.String()
+	}
+	docsURL, _ := docSource.GetDocument()
+	if docsURL != nil {
+		docs = docsURL.String()
+	}
+	other, _ := docSource.OtherLinks()
+
 	info := DocInfo{
 		Type:           docSource.Type,
 		PackagePath:    docSource.PackagePath,
 		URL:            docSource.GetURL().String(),
-		Homepage:       docSource.Homepage,
-		RelatedSources: docSource.RelatedSources,
+		Homepage:       homepage,
+		Repository:     repo,
+		Registry:       registry,
+		Document:       docs,
+		RelatedSources: other,
 	}
 
 	enc := json.NewEncoder(writer)
