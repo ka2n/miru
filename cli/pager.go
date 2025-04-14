@@ -374,7 +374,7 @@ func (m *pagerModel) View() string {
 			}
 			menu.WriteString(fmt.Sprintf("%s%s (%s)\n", prefix, item.label, item.shortcut))
 		}
-		menu.WriteString("\nTab: next • Enter: execute • Esc: close")
+		menu.WriteString("\nTab: next • Enter: open browser • Esc: close")
 		help = menu.String()
 	} else {
 		baseHelp := "↑/k up • ↓/j down • space/f forward • shift+space/b back • g/home top • G/end bottom"
