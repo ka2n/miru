@@ -26,6 +26,19 @@ go install github.com/ka2n/miru/cmd/miru@latest
 ```
 
 ### Package Installation
+
+### macOS
+
+For macOS users, miru is available via Homebrew:
+
+```bash
+# Add the tap repository
+brew tap ka2n/tap
+
+# Install miru
+brew install miru
+```
+
 ### Arch Linux
 
 For Arch Linux users, miru is available in the AUR as `miru-go-bin`:
