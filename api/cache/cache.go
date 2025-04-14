@@ -50,7 +50,7 @@ func prepareCacheDir() {
 		baseDir = filepath.Join(cacheHome, "miru")
 	}
 
-	DefaultDir = filepath.Join(DefaultDir, CACHE_VERSION)
+	DefaultDir = filepath.Join(baseDir, CACHE_VERSION)
 
 	if err := os.MkdirAll(DefaultDir, 0755); err != nil {
 		// キャッシュが使えなくても機能は動作する
