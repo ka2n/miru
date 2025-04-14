@@ -1,5 +1,7 @@
 # Changelog
 
+## [v0.0.4](https://github.com/ka2n/miru/compare/v0.0.3...v0.0.4) - 2025-04-14
+
 ## [v0.0.3](https://github.com/ka2n/miru/compare/v0.0.2...v0.0.3) - 2025-04-14
 ### Other Changes
 - feat(goreleaser): add homebrew-tap by @ka2n in https://github.com/ka2n/miru/pull/8
