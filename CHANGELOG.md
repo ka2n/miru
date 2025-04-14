@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.0.6](https://github.com/ka2n/miru/compare/v0.0.5...v0.0.6) - 2025-04-14
+### New Features
+- feat: add -o json option to output metadata with JSON by @ka2n in https://github.com/ka2n/miru/pull/15
+- feat: find links in the document by @ka2n in https://github.com/ka2n/miru/pull/17
+- feat: add MIRU_NO_CACHE=1 to disable cache by @ka2n in https://github.com/ka2n/miru/pull/19
+- detection: detect package name by install command in documentation by @ka2n in https://github.com/ka2n/miru/pull/20
+- feat: fetch documentation from github by @ka2n in https://github.com/ka2n/miru/pull/22
+- fix/go package by @ka2n in https://github.com/ka2n/miru/pull/23
+### Fix bugs
+- chore: safer menu handling by @ka2n in https://github.com/ka2n/miru/pull/18
+### Other Changes
+- docs/linux instruction by @ka2n in https://github.com/ka2n/miru/pull/13
+- fix(MIRU_NO_CACHE): make temp dir each time by @ka2n in https://github.com/ka2n/miru/pull/21
+
 ## [v0.0.5](https://github.com/ka2n/miru/compare/v0.0.4...v0.0.5) - 2025-04-14
 ### New Features
 - feat: add AUR package by @ka2n in https://github.com/ka2n/miru/pull/11
