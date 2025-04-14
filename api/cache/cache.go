@@ -46,6 +46,7 @@ func prepareCacheDir() {
 	if os.Getenv("MIRU_NO_CACHE") == "1" {
 		tmp, err := os.MkdirTemp(os.TempDir(), "miru")
 		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating temporary directory with MkdirTemp:", err)
 			tmp = filepath.Join(os.TempDir(), "miru")
 		}
 		baseDir = tmp
