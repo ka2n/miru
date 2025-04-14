@@ -11,6 +11,9 @@ on:
       TAP_GITHUB_TOKEN:
         required: true
         description: GitHub token to create PR for homebrew-taps
+      AUR_SSH_KEY:
+        required: true
+        description: SSH key to submit AUR package
 
 permissions: {}
 
@@ -39,6 +42,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
 
       - name: update release notes # with native notes generator
         run: |

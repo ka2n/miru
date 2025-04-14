@@ -16,3 +16,4 @@ jobs:
       tag: ${{ github.ref_name }}
     secrets:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+      AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
