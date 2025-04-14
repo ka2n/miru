@@ -203,6 +203,32 @@ func TestCommandExtraction(t *testing.T) {
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
+				{
+					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					URL:  "https://www.npmjs.com/package/express",
+					From: "document",
+				},
+				{
+					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					URL:  "https://www.npmjs.com/package/express",
+					From: "document",
+				},
+			},
+		},
+		{
+			name:     "JSR commands",
+			filename: "command_jsr.md",
+			want: []RelatedSource{
+				{
+					Type: RelatedSourceTypeFromString(SourceTypeJSR.String()),
+					URL:  "https://jsr.io/@hono/hono",
+					From: "document",
+				},
+				{
+					Type: RelatedSourceTypeFromString(SourceTypeJSR.String()),
+					URL:  "https://jsr.io/@hono/hono",
+					From: "document",
+				},
 			},
 		},
 		{

@@ -16,8 +16,13 @@ type sourcePattern struct {
 // Known patterns for package references in documentation
 var sourcePatterns = []sourcePattern{
 	{
-		Type:       SourceTypeJSR,
-		URLPattern: regexp.MustCompile(`https?://jsr\.io/@[^/]+/([^/\s]+)`),
+		Type:           SourceTypeJSR,
+		URLPattern:     regexp.MustCompile(`https?://jsr\.io/(@[^/]+/([^/\s]+))`),
+		CommandPattern: regexp.MustCompile(`jsr add (@[^\s]+)`),
+	},
+	{
+		Type:           SourceTypeJSR,
+		CommandPattern: regexp.MustCompile(`deno add jsr:(@[^\s]+)`),
 	},
 	{
 		Type:           SourceTypeNPM,
@@ -25,8 +30,8 @@ var sourcePatterns = []sourcePattern{
 		CommandPattern: regexp.MustCompile(`(?:npm|yarn|pnpm) (?:add|install|create) ([^@\s]+)`),
 	},
 	{
-		Type:       SourceTypeGoPkgDev,
-		URLPattern: regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
+		Type:        SourceTypeGoPkgDev,
+		URLPattern:  regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
 	},
 	{
 		Type:           SourceTypeCratesIO,
@@ -46,6 +51,9 @@ func extractSourcesFromURLs(urls []string) []RelatedSource {
 
 	for _, url := range urls {
 		for _, pattern := range sourcePatterns {
+			if pattern.URLPattern == nil {
+				continue
+			}
 			if matches := pattern.URLPattern.FindStringSubmatch(url); len(matches) > 1 {
 				sources = append(sources, RelatedSource{
 					Type: RelatedSourceTypeFromString(pattern.Type.String()),
@@ -98,16 +106,9 @@ func filterAndDeduplicate(sources []RelatedSource, currentPackage string) []Rela
 			continue
 		}
 
-		// Check if the URL matches the current package
-		for _, pattern := range sourcePatterns {
-			if matches := pattern.URLPattern.FindStringSubmatch(source.URL); len(matches) > 1 {
-				pkgName := matches[1]
-				if pkgName == currentPackage {
-					filtered = append(filtered, source)
-					seen[source.URL] = true
-					break
-				}
-			}
+		if strings.Contains(source.URL, currentPackage) {
+			filtered = append(filtered, source)
+			seen[source.URL] = true
 		}
 	}
 
@@ -180,6 +181,9 @@ func generatePackageURL(sourceType SourceType, pkgName string) string {
 		return fmt.Sprintf("https://crates.io/crates/%s", pkgName)
 	case SourceTypeRubyGems:
 		return fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
+	case SourceTypeJSR:
+		return fmt.Sprintf("https://jsr.io/%s", pkgName)
+	default:
+		panic("Unsupported source type: " + sourceType)
 	}
-	return ""
 }
