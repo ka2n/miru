@@ -5,19 +5,20 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/haya14busa/go-openbrowser"
 	"github.com/ka2n/miru/api"
 	"github.com/ka2n/miru/api/cache"
 	"github.com/morikuni/failure/v2"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
 
 // DocInfo represents the JSON output structure
 type DocInfo struct {
-	Type        string `json:"type"`
-	PackagePath string `json:"package_path"`
-	URL         string `json:"url"`
-	Homepage    string `json:"homepage,omitempty"`
+	Type           api.SourceType      `json:"type"`
+	PackagePath    string              `json:"package_path"`
+	URL            string              `json:"url"`
+	Homepage       string              `json:"homepage,omitempty"`
+	RelatedSources []api.RelatedSource `json:"related_sources,omitempty"`
 }
 
 var (
@@ -126,7 +127,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	if browserFlag {
-		fmt.Printf("Opening documentation in browser: %s (%s)\n", docSource.PackagePath, docSource.Type)
+		fmt.Printf("Opening documentation in browser: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
 		if err := openInBrowser(docSource); err != nil {
 			return failure.Wrap(err)
 		}
@@ -136,7 +137,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 				return failure.Wrap(err)
 			}
 		} else {
-			fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type)
+			fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
 			if err := displayDocumentation(docSource, false); err != nil {
 				return failure.Wrap(err)
 			}
@@ -148,7 +149,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 // displayDocumentation fetches and displays documentation in the pager
 func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
-	doc, err := api.FetchDocumentation(docSource, forceUpdate)
+	doc, err := api.FetchDocumentation(&docSource, forceUpdate)
 	if err != nil {
 		return failure.Wrap(err)
 	}
@@ -168,16 +169,16 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 	}
 
 	// Create a reload function for the pager
-	reloadFunc := func() (string, error) {
-		doc, err := api.FetchDocumentation(docSource, true)
+	reloadFunc := func() (string, api.DocSource, error) {
+		doc, err := api.FetchDocumentation(&docSource, true)
 		if err != nil {
-			return "", failure.Wrap(err)
+			return "", docSource, failure.Wrap(err)
 		}
 		out, err := renderer.Render(doc)
 		if err != nil {
-			return "", failure.Wrap(err)
+			return "", docSource, failure.Wrap(err)
 		}
-		return out, nil
+		return out, docSource, nil
 	}
 
 	if err := RunPagerWithReload(out, reloadFunc, docSource); err != nil {
@@ -189,24 +190,31 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 
 // openInBrowser opens the documentation in the default browser
 func openInBrowser(docSource api.DocSource) error {
-	u, err := api.GetDocumentationURL(docSource)
+	u, err := docSource.GetURL()
 	if err != nil {
 		return failure.Wrap(err)
 	}
-	return openbrowser.Start(u.String())
+	return browser.OpenURL(u.String())
 }
 
 // displayJSON outputs the documentation source information in JSON format
 func displayJSON(docSource api.DocSource) error {
-	u, err := api.GetDocumentationURL(docSource)
+	_, err := api.FetchDocumentation(&docSource, false)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	u, err := docSource.GetURL()
 	if err != nil {
 		return failure.Wrap(err)
 	}
 
 	info := DocInfo{
-		Type:        docSource.Type,
-		PackagePath: docSource.PackagePath,
-		URL:         u.String(),
+		Type:           docSource.Type,
+		PackagePath:    docSource.PackagePath,
+		URL:            u.String(),
+		Homepage:       docSource.Homepage,
+		RelatedSources: docSource.RelatedSources,
 	}
 
 	out, err := json.MarshalIndent(info, "", "  ")

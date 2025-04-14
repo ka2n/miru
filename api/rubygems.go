@@ -30,17 +30,18 @@ type rubyGemsPackageInfo struct {
 }
 
 // FetchRubyGemsReadme fetches the package information from RubyGems API
-func FetchRubyGemsReadme(pkgPath string) (string, error) {
+// Returns the formatted documentation and DocSource containing related sources
+func FetchRubyGemsReadme(pkgPath string) (string, *DocSource, error) {
 	// Get package information from RubyGems API
 	url := fmt.Sprintf("https://rubygems.org/api/v1/gems/%s.json", pkgPath)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", failure.New(ErrRubyGemsREADMENotFound,
+		return "", nil, failure.New(ErrRubyGemsREADMENotFound,
 			failure.Message("Package not found"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -51,10 +52,63 @@ func FetchRubyGemsReadme(pkgPath string) (string, error) {
 	// Parse JSON response
 	var info rubyGemsPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 
 	// Format the documentation text
+	doc := formatRubyGemsDoc(info)
+
+	// Extract related sources from API response
+	var sources []RelatedSource
+	if info.Homepage != "" {
+		sources = append(sources, RelatedSource{
+			Type: RelatedSourceTypeHomepage,
+			URL:  info.Homepage,
+			From: "api",
+		})
+	}
+	if info.Documentation != "" {
+		sources = append(sources, RelatedSource{
+			Type: RelatedSourceTypeDocumentation,
+			URL:  info.Documentation,
+			From: "api",
+		})
+	}
+	if info.Source != "" {
+		sources = append(sources, RelatedSource{
+			Type: RelatedSourceTypeFromString(detectSourceTypeFromURL(info.Source).String()),
+			URL:  cleanupRepositoryURL(info.Source),
+			From: "api",
+		})
+	}
+
+	// Extract additional sources from documentation
+	docSources := ExtractRelatedSources(doc, pkgPath)
+	sources = append(sources, docSources...)
+
+	// Remove duplicates
+	seen := make(map[string]bool)
+	var uniqueSources []RelatedSource
+	for _, s := range sources {
+		if !seen[s.URL] {
+			uniqueSources = append(uniqueSources, s)
+			seen[s.URL] = true
+		}
+	}
+
+	// Create result
+	result := DocSource{
+		Type:           SourceTypeRubyGems,
+		PackagePath:    pkgPath,
+		RelatedSources: uniqueSources,
+		Homepage:       info.Homepage,
+	}
+
+	return doc, &result, nil
+}
+
+// formatRubyGemsDoc formats the RubyGems package information into a markdown document
+func formatRubyGemsDoc(info rubyGemsPackageInfo) string {
 	var sections []string
 
 	// Title and version
@@ -99,7 +153,5 @@ func FetchRubyGemsReadme(pkgPath string) (string, error) {
 	}
 
 	// Join all sections with double newlines
-	doc := strings.Join(sections, "\n\n")
-
-	return doc, nil
+	return strings.Join(sections, "\n\n")
 }

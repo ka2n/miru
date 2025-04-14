@@ -19,8 +19,6 @@ var (
 
 	// DefaultDir is the default cache directory
 	DefaultDir string
-
-	defaultCache *Cache[string]
 )
 
 // Entry represents a cached item
@@ -31,8 +29,9 @@ type Entry[T any] struct {
 
 // Cache provides a generic caching mechanism
 type Cache[T any] struct {
-	dir string
-	ttl time.Duration
+	kind string
+	dir  string
+	ttl  time.Duration
 }
 
 func init() {
@@ -47,31 +46,14 @@ func init() {
 		// 初期化エラーはログに記録
 		// キャッシュが使えなくても機能は動作する
 	}
+}
 
-	defaultCache = &Cache[string]{
-		dir: DefaultDir,
-		ttl: DefaultTTL,
+func New[T any](kind string) *Cache[T] {
+	return &Cache[T]{
+		kind: kind,
+		dir:  DefaultDir,
+		ttl:  DefaultTTL,
 	}
-}
-
-// GetOrSet retrieves a value from cache or stores it if it doesn't exist
-func GetOrSet(key string, fn func() (string, error), forceUpdate bool) (string, error) {
-	return defaultCache.GetOrSet(key, fn, forceUpdate)
-}
-
-// Clear removes all cached entries
-func Clear() error {
-	return defaultCache.Clear()
-}
-
-// SetTTL updates the cache TTL
-func SetTTL(d time.Duration) {
-	defaultCache.SetTTL(d)
-}
-
-// SetDir updates the cache directory
-func SetDir(dir string) error {
-	return defaultCache.SetDir(dir)
 }
 
 // normalizeKey converts a cache key into a filesystem-safe format
@@ -103,7 +85,7 @@ func normalizeKey(key string) string {
 // GetOrSet retrieves a value from cache or stores it if it doesn't exist
 func (c *Cache[T]) GetOrSet(key string, fn func() (T, error), forceUpdate bool) (T, error) {
 	normalizedKey := normalizeKey(key)
-	path := filepath.Join(c.dir, normalizedKey+".gob")
+	path := filepath.Join(c.dir, normalizedKey+"_"+c.kind+".gob")
 
 	// キャッシュの読み込み試行（forceUpdate=falseの場合のみ）
 	if !forceUpdate {
@@ -182,4 +164,8 @@ func (c *Cache[T]) SetDir(dir string) error {
 	}
 	c.dir = dir
 	return nil
+}
+
+func Clear() error {
+	return os.RemoveAll(DefaultDir)
 }

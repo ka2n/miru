@@ -22,7 +22,7 @@ func init() {
 
 func runSources(cmd *cobra.Command, args []string) {
 	// Create a map to group aliases by source type
-	sourceAliases := make(map[string][]string)
+	sourceAliases := make(map[api.SourceType][]string)
 
 	// Group aliases by their source type
 	for alias, source := range api.GetLanguageAliases() {
@@ -30,11 +30,13 @@ func runSources(cmd *cobra.Command, args []string) {
 	}
 
 	// Sort source types for consistent output
-	sources := make([]string, 0, len(sourceAliases))
+	sources := make([]api.SourceType, 0, len(sourceAliases))
 	for source := range sourceAliases {
 		sources = append(sources, source)
 	}
-	sort.Strings(sources)
+	sort.Slice(sources, func(i, j int) bool {
+		return sources[i].String() < sources[j].String()
+	})
 
 	fmt.Println("Documentation Sources:")
 
@@ -42,9 +44,9 @@ func runSources(cmd *cobra.Command, args []string) {
 	for _, source := range sources {
 		aliases := sourceAliases[source]
 		sort.Strings(aliases)
-		fmt.Printf("  %-10s (%s)\n", source, strings.Join(aliases, ", "))
+		fmt.Printf("  %-10s (%s)\n", source.String(), strings.Join(aliases, ", "))
 	}
 
 	// Display GitHub as fallback
-	fmt.Printf("  %-10s (fallback for unknown sources)\n", api.SourceTypeGitHub)
+	fmt.Printf("  %-10s (fallback for unknown sources)\n", api.SourceTypeGitHub.String())
 }

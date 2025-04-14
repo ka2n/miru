@@ -127,7 +127,7 @@ MIRU_BROWSER=firefox    # Specify browser to use
 MIRU_BROWSER_PATH=/path/to/browser  # Specify browser binary path
 ```
 
-By default, miru uses [go-openbrowser](https://github.com/haya14busa/go-openbrowser) for browser integration.
+By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) for browser integration.
 
 ## Documentation Sources
 

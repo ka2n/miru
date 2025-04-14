@@ -14,7 +14,7 @@ Provide a CLI tool for viewing package documentation with a man-like interface.
 ## Technology Stack
 
 - Implementation Language: Go
-- Browser Integration: github.com/haya14busa/go-openbrowser
+- Browser Integration: github.com/pkg/browser
 - Configuration: Environment variables (MIRU_BROWSER, MIRU_BROWSER_PATH)
 - CLI Framework: github.com/spf13/cobra
 

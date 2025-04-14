@@ -10,8 +10,8 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.9.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/haya14busa/go-openbrowser v0.0.0-20160907213544-85b42b06940b
 	github.com/morikuni/failure/v2 v2.0.0-20240419002657-2551069d1c86
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.9.1
 )

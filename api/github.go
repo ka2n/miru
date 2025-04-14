@@ -27,10 +27,11 @@ type githubContentsResponse struct {
 }
 
 // FetchGitHubReadme fetches the README content from a GitHub repository
-func FetchGitHubReadme(pkgPath string) (string, error) {
+// Returns the content, DocSource with related sources, and any error
+func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 	// Check if gh command exists
 	if _, err := exec.LookPath("gh"); err != nil {
-		return "", failure.New(ErrGHCommandNotFound,
+		return "", nil, failure.New(ErrGHCommandNotFound,
 			failure.Message("gh command not found. Please install GitHub CLI: https://cli.github.com/"),
 			failure.Context{"error": err.Error()},
 		)
@@ -39,7 +40,7 @@ func FetchGitHubReadme(pkgPath string) (string, error) {
 	// Extract owner and repo from package path (already trimmed of github.com/)
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) < 2 {
-		return "", failure.New(ErrDocumentationFetch,
+		return "", nil, failure.New(ErrDocumentationFetch,
 			failure.Message("Invalid GitHub package path"),
 			failure.Context{"path": pkgPath},
 		)
@@ -51,7 +52,7 @@ func FetchGitHubReadme(pkgPath string) (string, error) {
 	cmd := exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
 	output, err := cmd.Output()
 	if err != nil {
-		return "", failure.New(ErrGHCommandFailed,
+		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
 			failure.Context{
 				"error": err.Error(),
@@ -64,7 +65,7 @@ func FetchGitHubReadme(pkgPath string) (string, error) {
 	// Parse JSON response
 	var contents []githubContentsResponse
 	if err := json.Unmarshal(output, &contents); err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 
 	// Find README file
@@ -77,7 +78,7 @@ func FetchGitHubReadme(pkgPath string) (string, error) {
 	}
 
 	if readmeURL == "" {
-		return "", failure.New(ErrREADMENotFound,
+		return "", nil, failure.New(ErrREADMENotFound,
 			failure.Message("README not found in repository"),
 			failure.Context{
 				"owner": owner,
@@ -89,14 +90,25 @@ func FetchGitHubReadme(pkgPath string) (string, error) {
 	// Download README content
 	resp, err := http.Get(readmeURL)
 	if err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 
-	return string(content), nil
+	// Extract related sources from content
+	docContent := string(content)
+	sources := ExtractRelatedSources(docContent, repo)
+
+	// Create DocSource with related sources
+	result := &DocSource{
+		Type:           SourceTypeGitHub,
+		PackagePath:    pkgPath,
+		RelatedSources: sources,
+	}
+
+	return docContent, result, nil
 }
