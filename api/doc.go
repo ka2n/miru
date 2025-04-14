@@ -59,10 +59,7 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			}
 		default:
 			// For other sources, return placeholder message for now
-			u, err := docSource.GetURL()
-			if err != nil {
-				return DocumentationResult{}, failure.Wrap(err)
-			}
+			u := docSource.GetURL()
 
 			switch docSource.Type {
 			case SourceTypeGoPkgDev:

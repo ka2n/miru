@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/ka2n/miru/api"
@@ -101,6 +102,7 @@ func Run() error {
 func runRoot(cmd *cobra.Command, args []string) error {
 	var pkg string
 	var specifiedLang string
+	logOut := cmd.OutOrStderr()
 
 	// Parse arguments based on count
 	if len(args) == 2 {
@@ -127,17 +129,17 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	if browserFlag {
-		fmt.Printf("Opening documentation in browser: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
+		fmt.Fprintf(logOut, "Opening documentation in browser: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
 		if err := openInBrowser(docSource); err != nil {
 			return failure.Wrap(err)
 		}
 	} else {
 		if outputFlag == "json" {
-			if err := displayJSON(docSource); err != nil {
+			if err := displayJSON(docSource, cmd.OutOrStdout()); err != nil {
 				return failure.Wrap(err)
 			}
 		} else {
-			fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
+			fmt.Fprintf(logOut, "Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
 			if err := displayDocumentation(docSource, false); err != nil {
 				return failure.Wrap(err)
 			}
@@ -190,21 +192,12 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 
 // openInBrowser opens the documentation in the default browser
 func openInBrowser(docSource api.DocSource) error {
-	u, err := docSource.GetURL()
-	if err != nil {
-		return failure.Wrap(err)
-	}
-	return browser.OpenURL(u.String())
+	return browser.OpenURL(docSource.GetURL().String())
 }
 
 // displayJSON outputs the documentation source information in JSON format
-func displayJSON(docSource api.DocSource) error {
+func displayJSON(docSource api.DocSource, writer io.Writer) error {
 	_, err := api.FetchDocumentation(&docSource, false)
-	if err != nil {
-		return failure.Wrap(err)
-	}
-
-	u, err := docSource.GetURL()
 	if err != nil {
 		return failure.Wrap(err)
 	}
@@ -212,16 +205,16 @@ func displayJSON(docSource api.DocSource) error {
 	info := DocInfo{
 		Type:           docSource.Type,
 		PackagePath:    docSource.PackagePath,
-		URL:            u.String(),
+		URL:            docSource.GetURL().String(),
 		Homepage:       docSource.Homepage,
 		RelatedSources: docSource.RelatedSources,
 	}
 
-	out, err := json.MarshalIndent(info, "", "  ")
-	if err != nil {
+	enc := json.NewEncoder(writer)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(info); err != nil {
 		return failure.Wrap(err)
 	}
-
-	fmt.Println(string(out))
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/morikuni/failure/v2"
+	"github.com/samber/lo"
 )
 
 // SourceType represents the type of documentation source
@@ -274,33 +274,15 @@ func (docSource DocSource) GetDocument() (*url.URL, error) {
 // GetRepository returns the repository URL for the package.
 // It first checks RelatedSources for a repository URL, then generates one from the package path.
 func (docSource DocSource) GetRepository() (*url.URL, error) {
-	// Generate repository URL from package path
-	var rawURL string
-	if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
-		rawURL = fmt.Sprintf("https://gitlab.com/%s", docSource.PackagePath)
-	} else if strings.HasPrefix(docSource.PackagePath, "github.com/") {
-		rawURL = fmt.Sprintf("https://github.com/%s", docSource.PackagePath)
-	}
-
-	if rawURL != "" {
-		u, err := url.Parse(rawURL)
-		if err != nil {
-			return nil, failure.Wrap(err,
-				failure.Context{
-					"source": docSource.Type.String(),
-					"pkg":    docSource.PackagePath,
-				},
-			)
-		}
-		return u, nil
+	if docSource.Type.IsRepository() {
+		return docSource.GetURL(), nil
 	}
 
 	// Check RelatedSources
 	for _, source := range docSource.RelatedSources {
 		t := SourceTypeFromString(source.Type.String())
-		if t == SourceTypeGitHub || t == SourceTypeGitLab {
-			cleanURL := cleanupRepositoryURL(source.URL)
-			u, err := url.Parse(cleanURL)
+		if t.IsRepository() {
+			u, err := url.Parse(source.URL)
 			if err == nil {
 				return u, nil
 			}
@@ -313,52 +295,15 @@ func (docSource DocSource) GetRepository() (*url.URL, error) {
 // GetRegistry returns the package registry URL.
 // It first checks RelatedSources for a registry URL, then generates one based on the source type.
 func (docSource DocSource) GetRegistry() (*url.URL, error) {
-	// Generate registry URL based on source type
-	var rawURL string
-	switch docSource.Type {
-	case SourceTypeGoPkgDev:
-		rawURL = fmt.Sprintf("https://go.pkg.dev/%s", docSource.PackagePath)
-	case SourceTypeJSR:
-		rawURL = fmt.Sprintf("https://jsr.io/%s", docSource.PackagePath)
-	case SourceTypeNPM:
-		pkgName := strings.ReplaceAll(docSource.PackagePath, "/", "-")
-		rawURL = fmt.Sprintf("https://www.npmjs.com/package/%s", pkgName)
-	case SourceTypeCratesIO:
-		pkgName := docSource.PackagePath
-		if idx := strings.LastIndex(docSource.PackagePath, "/"); idx != -1 {
-			pkgName = docSource.PackagePath[idx+1:]
-		}
-		rawURL = fmt.Sprintf("https://crates.io/crates/%s", pkgName)
-	case SourceTypeRubyGems:
-		pkgName := docSource.PackagePath
-		if idx := strings.LastIndex(docSource.PackagePath, "/"); idx != -1 {
-			pkgName = docSource.PackagePath[idx+1:]
-		}
-		rawURL = fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
-	}
-
-	if rawURL != "" {
-		u, err := url.Parse(rawURL)
-		if err != nil {
-			return nil, failure.Wrap(err,
-				failure.Context{
-					"source": docSource.Type.String(),
-					"pkg":    docSource.PackagePath,
-				},
-			)
-		}
-		return u, nil
+	if docSource.Type.IsRegistry() {
+		return docSource.GetURL(), nil
 	}
 
 	// Check RelatedSources
 	for _, source := range docSource.RelatedSources {
 		t := SourceTypeFromString(source.Type.String())
-		switch t {
-		case SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems, SourceTypeGoPkgDev, SourceTypeJSR:
-			u, err := url.Parse(source.URL)
-			if err == nil {
-				return u, nil
-			}
+		if t.IsRegistry() {
+			return url.Parse(source.URL)
 		}
 	}
 
@@ -403,7 +348,7 @@ func (docSource DocSource) OtherLinks() ([]RelatedSource, error) {
 
 // GetURL returns the URL for viewing the package documentation in a browser.
 // For unsupported sources, it returns the GitHub URL as a fallback.
-func (docSource DocSource) GetURL() (*url.URL, error) {
+func (docSource DocSource) GetURL() *url.URL {
 	var rawURL string
 
 	switch docSource.Type {
@@ -440,14 +385,6 @@ func (docSource DocSource) GetURL() (*url.URL, error) {
 		}
 	}
 
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, failure.Wrap(err,
-			failure.Context{
-				"source": docSource.Type.String(),
-				"pkg":    docSource.PackagePath,
-			},
-		)
-	}
-	return u, nil
+	u := lo.Must(url.Parse(rawURL))
+	return u
 }
