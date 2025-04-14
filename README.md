@@ -19,8 +19,62 @@ A command-line tool for viewing package documentation with a man-like interface.
 
 ## Installation
 
+### Go Install
+
 ```bash
 go install github.com/ka2n/miru/cmd/miru@latest
+```
+
+### Package Installation
+
+### macOS
+
+For macOS users, miru is available via Homebrew:
+
+```bash
+# Add the tap repository
+brew tap ka2n/tap
+
+# Install miru
+brew install miru
+```
+
+### Arch Linux
+
+For Arch Linux users, miru is available in the AUR as `miru-go-bin`:
+
+```bash
+yay -S miru-go-bin
+```
+
+#### Alpine Linux
+
+```bash
+# Download the package
+wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.apk
+
+# Install the package
+apk add --allow-untrusted ./miru_0.0.2-1_amd64.apk
+```
+
+#### Debian/Ubuntu
+
+```bash
+# Download the package
+wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.deb
+
+# Install the package
+apt install ./miru_0.0.2-1_amd64.deb
+```
+
+#### RHEL/Rocky Linux
+
+```bash
+# Download the package
+wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.rpm
+
+# Install the package
+rpm -i miru_0.0.2-1_amd64.rpm
 ```
 
 ## Usage
