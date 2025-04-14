@@ -44,7 +44,12 @@ func init() {
 func prepareCacheDir() {
 	var baseDir string
 	if os.Getenv("MIRU_NO_CACHE") == "1" {
-		baseDir = filepath.Join(os.TempDir(), "miru")
+		tmp, err := os.MkdirTemp(os.TempDir(), "miru")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating temporary directory with MkdirTemp:", err)
+			tmp = filepath.Join(os.TempDir(), "miru")
+		}
+		baseDir = tmp
 	} else {
 		cacheHome, err := os.UserCacheDir()
 		if err != nil {
