@@ -20,6 +20,11 @@ const (
 	ErrREADMENotFound ErrorCode = "READMENotFound"
 )
 
+// githubRepoResponse represents the GitHub API response for repository information
+type githubRepoResponse struct {
+	Homepage string `json:"homepage"`
+}
+
 // githubContentsResponse represents the GitHub API response for repository contents
 type githubContentsResponse struct {
 	Name        string `json:"name"`
@@ -48,9 +53,29 @@ func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 	owner := parts[0]
 	repo := parts[1]
 
-	// Get repository contents using gh api
-	cmd := exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
+	// Get repository information using gh api
+	cmd := exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s", owner, repo))
 	output, err := cmd.Output()
+	if err != nil {
+		return "", nil, failure.New(ErrGHCommandFailed,
+			failure.Message("Failed to fetch repository information"),
+			failure.Context{
+				"error": err.Error(),
+				"owner": owner,
+				"repo":  repo,
+			},
+		)
+	}
+
+	// Parse JSON response for repository information
+	var repoInfo githubRepoResponse
+	if err := json.Unmarshal(output, &repoInfo); err != nil {
+		return "", nil, failure.Wrap(err)
+	}
+
+	// Get repository contents using gh api
+	cmd = exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
+	output, err = cmd.Output()
 	if err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
@@ -103,11 +128,12 @@ func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 	docContent := string(content)
 	sources := ExtractRelatedSources(docContent, repo)
 
-	// Create DocSource with related sources
+	// Create DocSource with related sources and homepage
 	result := &DocSource{
 		Type:           SourceTypeGitHub,
 		PackagePath:    pkgPath,
 		RelatedSources: sources,
+		Homepage:       repoInfo.Homepage,
 	}
 
 	return docContent, result, nil
