@@ -1,5 +1,10 @@
 # miru
 
+> **Warning**
+> This project is in early development (pre-0.1.0) and the API is not stable.
+> Breaking changes may occur without notice.
+> Use with caution.
+
 A command-line tool for viewing package documentation with a man-like interface.
 
 ## Features
