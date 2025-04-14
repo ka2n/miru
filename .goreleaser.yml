@@ -70,9 +70,12 @@ brews:
       owner: ka2n
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+      branch: "{{ .ProjectName }}"
       pull_request:
         enabled: true
         draft: false
+        base:
+          branch: main
     homepage: https://github.com/ka2n/miru
     description: A command-line tool for viewing package documentation with a man-like interface
     license: MIT
