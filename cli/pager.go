@@ -393,7 +393,7 @@ func (m *pagerModel) View() string {
 	return m.viewport.View() + "\n" + help
 }
 
-// selectPreviousMenuItem selects the next menu item
+// selectNextMenuItem selects the next menu item
 func (m *pagerModel) selectNextMenuItem() {
 	if m.inputMode != menuMode || len(m.menuItems) == 0 {
 		return
