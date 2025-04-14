@@ -25,10 +25,11 @@ type gitlabContentsResponse struct {
 }
 
 // FetchGitLabReadme fetches the README content from a GitLab repository
-func FetchGitLabReadme(pkgPath string) (string, error) {
+// Returns the content, DocSource with related sources, and any error
+func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
 	// Check if glab command exists
 	if _, err := exec.LookPath("glab"); err != nil {
-		return "", failure.New(ErrGLabCommandNotFound,
+		return "", nil, failure.New(ErrGLabCommandNotFound,
 			failure.Message("glab command not found. Please install GitLab CLI: https://gitlab.com/gitlab-org/cli"),
 			failure.Context{"error": err.Error()},
 		)
@@ -37,7 +38,7 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 	// Extract owner and repo from package path (already trimmed of gitlab.com/)
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) < 2 {
-		return "", failure.New(ErrDocumentationFetch,
+		return "", nil, failure.New(ErrDocumentationFetch,
 			failure.Message("Invalid GitLab package path"),
 			failure.Context{"path": pkgPath},
 		)
@@ -49,7 +50,7 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 	cmd := exec.Command("glab", "api", fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo), "--paginate")
 	output, err := cmd.Output()
 	if err != nil {
-		return "", failure.New(ErrGLabCommandFailed,
+		return "", nil, failure.New(ErrGLabCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
 			failure.Context{
 				"error": err.Error(),
@@ -62,7 +63,7 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 	// Parse JSON response
 	var allContents []gitlabContentsResponse
 	if err := json.Unmarshal(output, &allContents); err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 
 	// Find README file
@@ -77,7 +78,7 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 	}
 
 	if readmeURL == "" {
-		return "", failure.New(ErrREADMENotFound,
+		return "", nil, failure.New(ErrREADMENotFound,
 			failure.Message("README not found in repository"),
 			failure.Context{
 				"owner": owner,
@@ -89,14 +90,25 @@ func FetchGitLabReadme(pkgPath string) (string, error) {
 	// Download README content
 	resp, err := http.Get(readmeURL)
 	if err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", failure.Wrap(err)
+		return "", nil, failure.Wrap(err)
 	}
 
-	return string(content), nil
+	// Extract related sources from content
+	docContent := string(content)
+	sources := ExtractRelatedSources(docContent, repo)
+
+	// Create DocSource with related sources
+	result := &DocSource{
+		Type:           SourceTypeGitLab,
+		PackagePath:    pkgPath,
+		RelatedSources: sources,
+	}
+
+	return docContent, result, nil
 }
