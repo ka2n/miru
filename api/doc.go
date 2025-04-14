@@ -42,11 +42,11 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			content, source, err = FetchGitHubReadme(docSource.PackagePath)
 		case SourceTypeGitLab:
 			content, source, err = FetchGitLabReadme(docSource.PackagePath)
-		case SourceTypeUnknown:
+		case SourceTypeUnknown, SourceTypeGoPkgDev:
 			// Try GitHub first, then GitLab if GitHub fails
-			if strings.HasPrefix(docSource.PackagePath, "github.com/") {
+			if strings.Contains(docSource.PackagePath, "github.com/") {
 				content, source, err = FetchGitHubReadme(docSource.PackagePath)
-			} else if strings.HasPrefix(docSource.PackagePath, "gitlab.com/") {
+			} else if strings.Contains(docSource.PackagePath, "gitlab.com/") {
 				content, source, err = FetchGitLabReadme(docSource.PackagePath)
 			} else {
 				return DocumentationResult{}, failure.New(ErrDocumentationFetch,
@@ -62,9 +62,6 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			u := docSource.GetURL()
 
 			switch docSource.Type {
-			case SourceTypeGoPkgDev:
-				content = fmt.Sprintf("Go package documentation for %s\nSource: pkg.go.dev", u.String())
-				source = docSource
 			case SourceTypeJSR:
 				content = fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String())
 				source = docSource

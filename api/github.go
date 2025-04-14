@@ -34,6 +34,12 @@ type githubContentsResponse struct {
 // FetchGitHubReadme fetches the README content from a GitHub repository
 // Returns the content, DocSource with related sources, and any error
 func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
+	// Strip ".*github.com/" prefix from package path
+	pos := strings.Index(pkgPath, "github.com/")
+	if pos != -1 {
+		pkgPath = pkgPath[pos+len("github.com/"):]
+	}
+
 	// Check if gh command exists
 	if _, err := exec.LookPath("gh"); err != nil {
 		return "", nil, failure.New(ErrGHCommandNotFound,
