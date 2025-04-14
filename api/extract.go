@@ -34,9 +34,10 @@ var sourcePatterns = []sourcePattern{
 		Description:    "NPM package reference",
 	},
 	{
-		Type:        SourceTypeGoPkgDev,
-		URLPattern:  regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
-		Description: "Go package reference",
+		Type:           SourceTypeGoPkgDev,
+		URLPattern:     regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
+		CommandPattern: regexp.MustCompile(`go (?:get|install|test)(?:\s-u)? ([^@\s]+)`),
+		Description:    "Go package reference",
 	},
 	{
 		Type:           SourceTypeCratesIO,

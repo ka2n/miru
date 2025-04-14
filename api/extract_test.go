@@ -254,6 +254,17 @@ func TestCommandExtraction(t *testing.T) {
 			},
 		},
 		{
+			name:     "go commands",
+			filename: "command_go.md",
+			want: []RelatedSource{
+				{
+					Type: RelatedSourceTypeFromString(SourceTypeGoPkgDev.String()),
+					URL:  "https://pkg.go.dev/github.com/spf13/cobra",
+					From: "document",
+				},
+			},
+		},
+		{
 			name:     "Mixed commands",
 			filename: "command_mixed.md",
 			want: []RelatedSource{
