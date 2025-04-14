@@ -42,9 +42,10 @@ func init() {
 }
 
 func prepareCacheDir() {
-	cacheHome, err := os.UserCacheDir()
 	var baseDir string
-	if err != nil {
+	noCache := os.Getenv("MIRU_NO_CACHE") == "1"
+	cacheHome, err := os.UserCacheDir()
+	if noCache || err != nil {
 		baseDir = filepath.Join(os.TempDir(), "miru")
 	} else {
 		baseDir = filepath.Join(cacheHome, "miru")
@@ -58,8 +59,6 @@ func prepareCacheDir() {
 	}
 
 	go cleanupOldCache(baseDir)
-
-	return
 }
 
 func cleanupOldCache(baseDir string) {
