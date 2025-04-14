@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/charmbracelet/glamour"
@@ -11,10 +12,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// DocInfo represents the JSON output structure
+type DocInfo struct {
+	Type        string `json:"type"`
+	PackagePath string `json:"package_path"`
+	URL         string `json:"url"`
+	Homepage    string `json:"homepage,omitempty"`
+}
+
 var (
 	// Command line flags
 	browserFlag bool
 	langFlag    string
+	outputFlag  string
 
 	// Root command
 	rootCmd = &cobra.Command{
@@ -58,6 +68,7 @@ You can specify the language in two ways:
 func init() {
 	rootCmd.Flags().BoolVarP(&browserFlag, "browser", "b", false, "Display documentation in browser")
 	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
+	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
 	rootCmd.AddCommand(versionCmd)
 
 	// キャッシュコマンドの追加
@@ -120,9 +131,15 @@ func runRoot(cmd *cobra.Command, args []string) error {
 			return failure.Wrap(err)
 		}
 	} else {
-		fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type)
-		if err := displayDocumentation(docSource, false); err != nil {
-			return failure.Wrap(err)
+		if outputFlag == "json" {
+			if err := displayJSON(docSource); err != nil {
+				return failure.Wrap(err)
+			}
+		} else {
+			fmt.Printf("Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type)
+			if err := displayDocumentation(docSource, false); err != nil {
+				return failure.Wrap(err)
+			}
 		}
 	}
 
@@ -177,4 +194,26 @@ func openInBrowser(docSource api.DocSource) error {
 		return failure.Wrap(err)
 	}
 	return openbrowser.Start(u.String())
+}
+
+// displayJSON outputs the documentation source information in JSON format
+func displayJSON(docSource api.DocSource) error {
+	u, err := api.GetDocumentationURL(docSource)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	info := DocInfo{
+		Type:        docSource.Type,
+		PackagePath: docSource.PackagePath,
+		URL:         u.String(),
+	}
+
+	out, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	fmt.Println(string(out))
+	return nil
 }

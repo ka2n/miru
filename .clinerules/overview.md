@@ -43,9 +43,16 @@ github.com/ka2n/miru/
 miru [package]                    # Display documentation in man format
 miru [package] -b                 # Display documentation in browser
 miru [lang] [package]             # Specify package language explicitly
-miru [package] --lang [lang]       # Specify package language with flag
+miru [package] --lang [lang]      # Specify package language with flag
+miru [package] -o json           # Output metadata in JSON format
 miru version                      # Display version information
 ```
+
+Output formats:
+
+- Default: Display documentation in man-style pager
+- Browser (-b): Open documentation in browser
+- JSON (-o json): Output package metadata without content for testing purposes
 
 Language detection:
 

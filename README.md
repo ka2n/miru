@@ -31,7 +31,8 @@ View package documentation in terminal:
 miru [package]                    # Display documentation in man-like interface
 miru [package] -b                 # Open documentation in browser
 miru [lang] [package]             # Specify package language explicitly
-miru [package] --lang [lang]       # Specify package language with flag
+miru [package] --lang [lang]      # Specify package language with flag
+miru [package] -o json           # Output metadata in JSON format
 ```
 
 Examples:
@@ -48,6 +49,9 @@ miru go github.com/spf13/cobra
 
 # Specify language with flag
 miru github.com/spf13/cobra --lang go
+
+# Output package metadata in JSON format
+miru github.com/spf13/cobra -o json
 ```
 
 ## Package Structure
