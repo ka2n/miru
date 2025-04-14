@@ -59,7 +59,7 @@ type RelatedSource struct {
 	Type RelatedSourceType
 	// URL represents the complete URL to the documentation
 	URL string
-	// From indicates how this source was discovered: "api", "document_link", or "document_command"
+	// From indicates how this source was discovered: "api", or "document"
 	From string
 }
 
