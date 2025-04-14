@@ -91,3 +91,27 @@ release:
   draft: true
   replace_existing_draft: true
   mode: keep-existing
+
+aurs:
+  - name: miru-go-bin
+    homepage: https://github.com/ka2n/miru
+    description: A command-line tool for viewing package documentation with a man-like interface
+    maintainers:
+      - ka2n <ka2n@pobox.com>
+    license: MIT
+    private_key: "{{ .Env.AUR_SSH_KEY }}"
+    git_url: ssh://aur@aur.archlinux.org/miru-go-bin.git
+    optdepends:
+      - github-cli
+      - glab
+    package: |-
+      # bin
+      install -Dm755 "./miru" "$pkgdir/usr/bin/miru"
+
+      # license
+      install -Dm644 "./LICENSE" "$pkgdir/usr/share/licenses/miru-go-bin/LICENSE"
+
+      # docs
+      install -Dm644 "./README.md" "$pkgdir/usr/share/doc/miru-go-bin/README.md"
+      install -Dm644 "./CHANGELOG.md" "$pkgdir/usr/share/doc/miru-go-bin/CHANGELOG.md"
+      install -Dm644 "./CREDITS" "$pkgdir/usr/share/doc/miru-go-bin/CREDITS"

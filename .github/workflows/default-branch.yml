@@ -39,6 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
 
   release:
     needs: tagpr
