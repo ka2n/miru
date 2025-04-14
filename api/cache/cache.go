@@ -2,6 +2,7 @@ package cache
 
 import (
 	"encoding/gob"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,6 +28,8 @@ type Entry[T any] struct {
 	CreatedAt time.Time
 }
 
+const CACHE_VERSION = "v1"
+
 // Cache provides a generic caching mechanism
 type Cache[T any] struct {
 	kind string
@@ -35,16 +38,52 @@ type Cache[T any] struct {
 }
 
 func init() {
+	prepareCacheDir()
+}
+
+func prepareCacheDir() {
 	cacheHome, err := os.UserCacheDir()
+	var baseDir string
 	if err != nil {
-		DefaultDir = filepath.Join(os.TempDir(), "miru")
+		baseDir = filepath.Join(os.TempDir(), "miru")
 	} else {
-		DefaultDir = filepath.Join(cacheHome, "miru")
+		baseDir = filepath.Join(cacheHome, "miru")
 	}
 
+	DefaultDir = filepath.Join(baseDir, CACHE_VERSION)
+
 	if err := os.MkdirAll(DefaultDir, 0755); err != nil {
-		// 初期化エラーはログに記録
 		// キャッシュが使えなくても機能は動作する
+		fmt.Fprintln(os.Stderr, "Error creating cache directory:", err)
+	}
+
+	go cleanupOldCache(baseDir)
+
+	return
+}
+
+func cleanupOldCache(baseDir string) {
+	// If other version of cache exists, remove it
+	// List directories under the baseDir
+	dirEntries, err := os.ReadDir(baseDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error reading cache directory:", err)
+		return
+	}
+	// Iterate through the directories
+	for _, entry := range dirEntries {
+		if entry.IsDir() {
+			dirName := entry.Name()
+			// Check if the directory name starts with "v" and is not the current version
+			if strings.HasPrefix(dirName, "v") && dirName != CACHE_VERSION {
+				// Remove the directory
+				err := os.RemoveAll(filepath.Join(baseDir, dirName))
+				if err != nil {
+					// Log error if needed
+					fmt.Fprintln(os.Stderr, "Error removing old cache directory:", err)
+				}
+			}
+		}
 	}
 }
 

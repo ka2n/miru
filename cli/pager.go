@@ -247,38 +247,37 @@ func (m *pagerModel) updateSearchMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateMenuMode handles updates in menu mode
 func (m *pagerModel) updateMenuMode(msg tea.Msg) (tea.Model, tea.Cmd) {
+	closeAfterSelect := false
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case tea.KeyType(tea.KeyEscape).String():
+		case "esc":
 			m.inputMode = normalMode
 			return m, nil
-		case "j", "down":
-			m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
+		case "j", "down", "tab":
+			m.selectNextMenuItem()
 			return m, nil
-		case "k", "up":
-			m.selectedIdx--
-			if m.selectedIdx < 0 {
-				m.selectedIdx = len(m.menuItems) - 1
-			}
-			return m, nil
-		case "tab":
-			m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
+		case "k", "up", "shift+tab":
+			m.selectPreviousMenuItem()
 			return m, nil
 		case "enter":
-			if err := m.menuItems[m.selectedIdx].action(); err != nil {
-				m.pagerError = err.Error()
+			if item, ok := m.currentMenuItem(); ok {
+				if err := item.action(); err != nil {
+					m.pagerError = err.Error()
+				}
 			}
 			return m, nil
 		default:
-			items := filterMenuItemsByShortcut(m.menuItems, msg.String())
-			if len(items) > 0 {
-				if err := items[0].action(); err != nil {
+			if item, ok := filterMenuItemByShortcut(m.menuItems, msg.String()); ok {
+				if err := item.action(); err != nil {
 					m.pagerError = err.Error()
 				}
-				// m.inputMode = normalMode
+				if closeAfterSelect {
+					m.inputMode = normalMode
+				}
 			}
 			return m, nil
 		}
@@ -299,7 +298,7 @@ func (m *pagerModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
-		case tea.KeyType(tea.KeyEscape).String():
+		case "esc":
 			if len(m.search.matches) > 0 {
 				m.clearHighlights()
 				m.search.input.Reset()
@@ -339,7 +338,10 @@ func (m *pagerModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.previousMatch()
 			}
 		case "tab":
-			m.inputMode = menuMode
+			if len(m.menuItems) > 0 {
+				m.inputMode = menuMode
+				m.selectedIdx = 0
+			}
 			return m, nil
 		}
 	}
@@ -389,6 +391,32 @@ func (m *pagerModel) View() string {
 		}
 	}
 	return m.viewport.View() + "\n" + help
+}
+
+// selectNextMenuItem selects the next menu item
+func (m *pagerModel) selectNextMenuItem() {
+	if m.inputMode != menuMode || len(m.menuItems) == 0 {
+		return
+	}
+	m.selectedIdx = (m.selectedIdx + 1) % len(m.menuItems)
+}
+
+// selectPreviousMenuItem selects the previous menu item
+func (m *pagerModel) selectPreviousMenuItem() {
+	if m.inputMode != menuMode || len(m.menuItems) == 0 {
+		return
+	}
+	m.selectedIdx--
+	if m.selectedIdx < 0 {
+		m.selectedIdx = len(m.menuItems) - 1
+	}
+}
+
+func (m *pagerModel) currentMenuItem() (menuItem, bool) {
+	if m.inputMode != menuMode || len(m.menuItems) == 0 {
+		return menuItem{}, false
+	}
+	return m.menuItems[m.selectedIdx], true
 }
 
 func (m *pagerModel) performSearch() {
@@ -612,14 +640,13 @@ func (m *pagerModel) clearHighlights() {
 	m.viewport.SetContent(m.content)
 }
 
-func filterMenuItemsByShortcut(items []menuItem, shortcut string) []menuItem {
-	var filtered []menuItem
+func filterMenuItemByShortcut(items []menuItem, shortcut string) (menuItem, bool) {
 	for _, item := range items {
 		if item.shortcut == shortcut {
-			filtered = append(filtered, item)
+			return item, true
 		}
 	}
-	return filtered
+	return menuItem{}, false
 }
 
 // RunPager starts the pager program with the given content
