@@ -34,6 +34,7 @@ jobs:
           goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
 
       - name: update release notes # with native notes generator
         run: |
