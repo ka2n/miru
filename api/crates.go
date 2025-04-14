@@ -186,7 +186,7 @@ func FetchCratesReadme(pkgPath string) (string, *DocSource, error) {
 	// Add repository if available
 	if info.Repository != "" {
 		sources = append(sources, RelatedSource{
-			Type: detectSourceTypeFromURL(info.Repository).String(),
+			Type: RelatedSourceTypeFromString(detectSourceTypeFromURL(info.Repository).String()),
 			URL:  cleanupRepositoryURL(info.Repository),
 			From: "api",
 		})

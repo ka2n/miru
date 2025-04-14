@@ -58,7 +58,7 @@ type pagerModel struct {
 	inputMode   inputMode
 	search      searchState
 	reloadFunc  func() (string, api.DocSource, error)
-	error       string
+	pagerError  string
 	isReloading bool
 
 	docSource   api.DocSource // Documentation source information
@@ -183,13 +183,13 @@ func (m *pagerModel) updateCommon(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloadFinishMsg:
 		m.isReloading = false
 		if msg.err != nil {
-			m.error = msg.err.Error()
+			m.pagerError = msg.err.Error()
 		} else {
 			m.content = msg.content
 			m.docSource = msg.docSource
 			m.setupMenuItems()  // メニューを再構築
 			m.clearHighlights() // Clear search highlights
-			m.error = ""
+			m.pagerError = ""
 		}
 		// Force viewport update
 		return m, func() tea.Msg {
@@ -269,14 +269,14 @@ func (m *pagerModel) updateMenuMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter":
 			if err := m.menuItems[m.selectedIdx].action(); err != nil {
-				m.error = err.Error()
+				m.pagerError = err.Error()
 			}
 			return m, nil
 		default:
 			items := filterMenuItemsByShortcut(m.menuItems, msg.String())
 			if len(items) > 0 {
 				if err := items[0].action(); err != nil {
-					m.error = err.Error()
+					m.pagerError = err.Error()
 				}
 				// m.inputMode = normalMode
 			}
@@ -384,8 +384,8 @@ func (m *pagerModel) View() string {
 		help = helpStyle.Render(baseHelp + " • " + searchHelp)
 		if m.isReloading {
 			help += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("110")).Render("Reloading...")
-		} else if m.error != "" {
-			help += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("Error: "+m.error)
+		} else if m.pagerError != "" {
+			help += "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("Error: "+m.pagerError)
 		}
 	}
 	return m.viewport.View() + "\n" + help

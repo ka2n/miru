@@ -76,7 +76,7 @@ func FetchRubyGemsReadme(pkgPath string) (string, *DocSource, error) {
 	}
 	if info.Source != "" {
 		sources = append(sources, RelatedSource{
-			Type: detectSourceTypeFromURL(info.Source).String(),
+			Type: RelatedSourceTypeFromString(detectSourceTypeFromURL(info.Source).String()),
 			URL:  cleanupRepositoryURL(info.Source),
 			From: "api",
 		})

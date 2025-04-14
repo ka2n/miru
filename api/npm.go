@@ -64,7 +64,7 @@ func FetchNPMReadme(pkgPath string) (string, *DocSource, error) {
 	// Add repository if available
 	if info.Repository.URL != "" {
 		sources = append(sources, RelatedSource{
-			Type: detectSourceTypeFromURL(info.Repository.URL).String(),
+			Type: RelatedSourceTypeFromString(detectSourceTypeFromURL(info.Repository.URL).String()),
 			URL:  cleanupRepositoryURL(info.Repository.URL),
 			From: "api",
 		})

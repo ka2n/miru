@@ -59,7 +59,7 @@ func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
 				pkgName := matches[1]
 				if pkgName == currentPackage {
 					sources = append(sources, RelatedSource{
-						Type: pattern.Type.String(),
+						Type: RelatedSourceTypeFromString(pattern.Type.String()),
 						URL:  url,
 						From: "document_link",
 					})
@@ -82,7 +82,7 @@ func ExtractRelatedSources(content, currentPackage string) []RelatedSource {
 				url := generatePackageURL(pattern.Type, currentPackage)
 				if url != "" && !seen[url] {
 					sources = append(sources, RelatedSource{
-						Type: pattern.Type.String(),
+						Type: RelatedSourceTypeFromString(pattern.Type.String()),
 						URL:  url,
 						From: "document_command",
 					})

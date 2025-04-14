@@ -56,17 +56,29 @@ type DocSource struct {
 // RelatedSource represents a related documentation source found in content or API responses
 type RelatedSource struct {
 	// Type represents the source type (e.g., SourceTypeGoPkgDev) or RelatedSourceType*
-	Type string
+	Type RelatedSourceType
 	// URL represents the complete URL to the documentation
 	URL string
 	// From indicates how this source was discovered: "api", "document_link", or "document_command"
 	From string
 }
 
+type RelatedSourceType string
+
+// String returns the string representation of the RelatedSourceType
+func (s RelatedSourceType) String() string {
+	return string(s)
+}
+
 const (
-	RelatedSourceTypeDocumentation = "documentation"
-	RelatedSourceTypeHomepage      = "homapage"
+	RelatedSourceTypeDocumentation RelatedSourceType = "documentation"
+	RelatedSourceTypeHomepage      RelatedSourceType = "homepage"
 )
+
+// RelatedSourceTypeFromString creates a SourceType from a string
+func RelatedSourceTypeFromString(s string) RelatedSourceType {
+	return RelatedSourceType(s)
+}
 
 const (
 	// Documentation source types
@@ -285,7 +297,7 @@ func (docSource DocSource) GetRepository() (*url.URL, error) {
 
 	// Check RelatedSources
 	for _, source := range docSource.RelatedSources {
-		t := SourceTypeFromString(source.Type)
+		t := SourceTypeFromString(source.Type.String())
 		if t == SourceTypeGitHub || t == SourceTypeGitLab {
 			cleanURL := cleanupRepositoryURL(source.URL)
 			u, err := url.Parse(cleanURL)
@@ -340,7 +352,7 @@ func (docSource DocSource) GetRegistry() (*url.URL, error) {
 
 	// Check RelatedSources
 	for _, source := range docSource.RelatedSources {
-		t := SourceTypeFromString(source.Type)
+		t := SourceTypeFromString(source.Type.String())
 		switch t {
 		case SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems, SourceTypeGoPkgDev, SourceTypeJSR:
 			u, err := url.Parse(source.URL)
