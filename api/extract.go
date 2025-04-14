@@ -11,6 +11,7 @@ type sourcePattern struct {
 	Type           SourceType     // Source type identifier
 	URLPattern     *regexp.Regexp // Pattern for matching URLs
 	CommandPattern *regexp.Regexp // Pattern for matching installation commands
+	Description    string         // Description of the source type
 }
 
 // Known patterns for package references in documentation
@@ -19,29 +20,35 @@ var sourcePatterns = []sourcePattern{
 		Type:           SourceTypeJSR,
 		URLPattern:     regexp.MustCompile(`https?://jsr\.io/(@[^/]+/([^/\s]+))`),
 		CommandPattern: regexp.MustCompile(`jsr add (@[^\s]+)`),
+		Description:    "JSR package reference",
 	},
 	{
 		Type:           SourceTypeJSR,
 		CommandPattern: regexp.MustCompile(`deno add jsr:(@[^\s]+)`),
+		Description:    "JSR package reference for Deno",
 	},
 	{
 		Type:           SourceTypeNPM,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?npmjs\.com/package/([^/\s]+)`),
 		CommandPattern: regexp.MustCompile(`(?:npm|yarn|pnpm) (?:add|install|create) ([^@\s]+)`),
+		Description:    "NPM package reference",
 	},
 	{
 		Type:        SourceTypeGoPkgDev,
 		URLPattern:  regexp.MustCompile(`https?://pkg\.go\.dev/([^\s]+)`),
+		Description: "Go package reference",
 	},
 	{
 		Type:           SourceTypeCratesIO,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?crates\.io/crates/([^/\s]+)`),
 		CommandPattern: regexp.MustCompile(`cargo add ([^@\s]+)`),
+		Description:    "Cargo package reference",
 	},
 	{
 		Type:           SourceTypeRubyGems,
 		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?rubygems\.org/gems/([^/\s]+)`),
 		CommandPattern: regexp.MustCompile(`gem install ([^@\s]+)`),
+		Description:    "RubyGems package reference",
 	},
 }
 
