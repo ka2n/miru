@@ -23,11 +23,11 @@ builds:
     main: ./cmd/miru
 
 archives:
-  - formats: ['tar.gz']
+  - formats: ["tar.gz"]
     name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format_overrides:
       - goos: windows
-        formats: ['zip']
+        formats: ["zip"]
     files:
       - LICENSE
       - CREDITS
@@ -63,6 +63,26 @@ nfpms:
     recommends:
       - gh
       - glab
+
+brews:
+  - name: miru
+    repository:
+      owner: ka2n
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        draft: false
+    homepage: https://github.com/ka2n/miru
+    description: A command-line tool for viewing package documentation with a man-like interface
+    license: MIT
+    dependencies:
+      - name: gh
+        type: optional
+      - name: glab
+        type: optional
+    install: |
+      bin.install "miru"
 
 release:
   draft: true
