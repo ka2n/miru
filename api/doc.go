@@ -53,7 +53,9 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			content, source, err = FetchCratesReadme(docSource.PackagePath)
 		case SourceTypeRubyGems:
 			content, source, err = FetchRubyGemsReadme(docSource.PackagePath)
-		case SourceTypeUnknown, SourceTypeGoPkgDev:
+		case SourceTypeGoPkgDev:
+			content, source, err = FetchPkgGoDevReadme(docSource.PackagePath)
+		case SourceTypeUnknown:
 			// Try GitHub first, then GitLab if GitHub fails
 			if strings.Contains(docSource.PackagePath, "github.com/") {
 				content, source, err = FetchGitHubReadme(docSource.PackagePath)

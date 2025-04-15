@@ -17,6 +17,7 @@ Provide a CLI tool for viewing package documentation with a man-like interface.
 - Browser Integration: github.com/pkg/browser
 - Configuration: Environment variables (MIRU_BROWSER, MIRU_BROWSER_PATH, MIRU_NO_CACHE)
 - CLI Framework: github.com/spf13/cobra
+- Error handling: github.com/morikuni/failure/v2
 
 ## Package Structure
 
