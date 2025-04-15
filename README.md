@@ -14,7 +14,7 @@ A command-line tool for viewing package documentation with a man-like interface.
 - Open documentation in browser
 - Search packages and their documentation
 - Configurable browser integration
-- [] View structured documentation
+- [ ] View structured documentation
   - Show documentation from symbols, types, and functions
 
 ## Installation
@@ -27,7 +27,7 @@ go install github.com/ka2n/miru/cmd/miru@latest
 
 ### Package Installation
 
-### macOS
+#### macOS
 
 For macOS users, miru is available via Homebrew:
 
@@ -39,7 +39,7 @@ brew tap ka2n/tap
 brew install miru
 ```
 
-### Arch Linux
+#### Arch Linux
 
 For Arch Linux users, miru is available in the AUR as `miru-go-bin`:
 
@@ -50,34 +50,39 @@ yay -S miru-go-bin
 #### Alpine Linux
 
 ```bash
+MIRU_VERSION=X.X.X
 # Download the package
-wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.apk
+wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_${MIRU_VERSION}-1_amd64.apk
 
 # Install the package
-apk add --allow-untrusted ./miru_0.0.2-1_amd64.apk
+apk add --allow-untrusted ./miru_$MIRU_VERSION-1_amd64.apk
 ```
 
 #### Debian/Ubuntu
 
 ```bash
+MIRU_VERSION=X.X.X
 # Download the package
-wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.deb
+wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_${MIRU_VERSION}-1_amd64.deb
 
 # Install the package
-apt install ./miru_0.0.2-1_amd64.deb
+apt install ./miru_$MIRU_VERSION-1_amd64.deb
 ```
 
 #### RHEL/Rocky Linux
 
 ```bash
+MIRU_VERSION=X.X.X
 # Download the package
-wget https://github.com/ka2n/miru/releases/download/v0.0.2/miru_0.0.2-1_amd64.rpm
+wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_$MIRU_VERSION-1_amd64.rpm
 
 # Install the package
-rpm -i miru_0.0.2-1_amd64.rpm
+rpm -i miru_$MIRU_VERSION-1_amd64.rpm
 ```
 
 ## Usage
+
+### CLI
 
 View package documentation in terminal:
 
@@ -108,27 +113,17 @@ miru github.com/spf13/cobra --lang go
 miru github.com/spf13/cobra -o json
 ```
 
-MCP Server
+### MCP Server
 
 ```
 miru mcp
 ```
 
-### Tools
+#### Tools
 
 - **fetch_library_urls** Fetch library related URLs from repository or registry.
 - **fetch_library_docs** Fetch library documentation content and other links from repository or registry.
 
-
-## Package Structure
-
-```
-github.com/ka2n/miru/
-├── api/      # Core implementations for documentation fetching and rendering
-├── cli/      # CLI interface implementation
-├── mcp/      # Model Context Protocol server implementation
-└── cmd/miru/ # Main command implementation
-```
 
 ## Configuration
 
@@ -149,10 +144,24 @@ By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) f
 miru supports fetching documentation from:
 
 - pkg.go.dev
-- GitHub repositories
-- Local module documentation
+- npmjs.com
+- crates.io
+- rubygems.org
+- jsr.io
+- github.com
+- gitlab.com
 
 ## Development
+### Package Structure
+
+```
+github.com/ka2n/miru/
+├── api/      # Core implementations for documentation fetching and rendering
+├── cli/      # CLI interface implementation
+├── mcp/      # Model Context Protocol server implementation
+└── cmd/miru/ # Main command implementation
+```
+
 
 ### Requirements
 
