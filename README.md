@@ -53,7 +53,7 @@ For Arch Linux users, miru is available in the AUR as `miru-go-bin`:
 yay -S miru-go-bin
 ```
 
-#### Alpine Linux
+### Alpine Linux
 
 ```bash
 MIRU_VERSION=X.X.X
@@ -64,7 +64,7 @@ wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_${MIRU
 apk add --allow-untrusted ./miru_$MIRU_VERSION-1_amd64.apk
 ```
 
-#### Debian/Ubuntu
+### Debian/Ubuntu
 
 ```bash
 MIRU_VERSION=X.X.X
@@ -75,7 +75,7 @@ wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_${MIRU
 apt install ./miru_$MIRU_VERSION-1_amd64.deb
 ```
 
-#### RHEL/Rocky Linux
+### RHEL/Rocky Linux
 
 ```bash
 MIRU_VERSION=X.X.X
