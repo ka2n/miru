@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -16,6 +17,11 @@ const (
 	ErrGLabCommandNotFound ErrorCode = "GLabCommandNotFound"
 	// ErrGLabCommandFailed represents an error when the glab command fails
 	ErrGLabCommandFailed ErrorCode = "GLabCommandFailed"
+
+	// EnvGLabCommand is the environment variable name for specifying glab command path
+	EnvGLabCommand = "MIRU_GLAB_BIN"
+	// DefaultGLabCommand is the default command name for GitLab CLI
+	DefaultGLabCommand = "glab"
 )
 
 // gitlabContentsResponse represents the GitLab API response for repository contents
@@ -32,11 +38,20 @@ func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
 		pkgPath = pkgPath[pos+len("gitlab.com/"):]
 	}
 
+	// Get glab command path from environment variable or use default
+	glabCmd := DefaultGLabCommand
+	if cmd := os.Getenv(EnvGLabCommand); cmd != "" {
+		glabCmd = cmd
+	}
+
 	// Check if glab command exists
-	if _, err := exec.LookPath("glab"); err != nil {
+	if _, err := exec.LookPath(glabCmd); err != nil {
 		return "", nil, failure.New(ErrGLabCommandNotFound,
-			failure.Message("glab command not found. Please install GitLab CLI: https://gitlab.com/gitlab-org/cli"),
-			failure.Context{"error": err.Error()},
+			failure.Message(fmt.Sprintf("glab command not found at %s. Please install GitLab CLI: https://gitlab.com/gitlab-org/cli or set %s environment variable", glabCmd, EnvGLabCommand)),
+			failure.Context{
+				"error": err.Error(),
+				"path":  glabCmd,
+			},
 		)
 	}
 
@@ -52,7 +67,7 @@ func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
 	repo := parts[1]
 
 	// Get repository contents using glab api with pagination
-	cmd := exec.Command("glab", "api", fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo), "--paginate")
+	cmd := exec.Command(glabCmd, "api", fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo), "--paginate")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", nil, failure.New(ErrGLabCommandFailed,
