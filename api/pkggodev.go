@@ -31,7 +31,7 @@ func FetchPkgGoDevReadme(pkgPath string) (string, *DocSource, error) {
 	var sourceRepoURL *url.URL // URL of the source repository not git URL
 	if repo.Hostname() == "github.com" || repo.Hostname() == "gitlab.com" {
 		sourceRepoURL = repo
-	} else if home != nil && home.Hostname() == "github.com" || home.Hostname() == "gitlab.com" {
+	} else if home != nil && (home.Hostname() == "github.com" || home.Hostname() == "gitlab.com") {
 		sourceRepoURL = home
 	}
 	if sourceRepoURL != nil {
