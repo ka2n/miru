@@ -42,7 +42,20 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			content, source, err = FetchGitHubReadme(docSource.PackagePath)
 		case SourceTypeGitLab:
 			content, source, err = FetchGitLabReadme(docSource.PackagePath)
-		case SourceTypeUnknown, SourceTypeGoPkgDev:
+		// For other sources, return placeholder message for now
+		case SourceTypeJSR:
+			u := docSource.GetURL()
+			content = fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String())
+			source = docSource
+		case SourceTypeNPM:
+			content, source, err = FetchNPMReadme(docSource.PackagePath)
+		case SourceTypeCratesIO:
+			content, source, err = FetchCratesReadme(docSource.PackagePath)
+		case SourceTypeRubyGems:
+			content, source, err = FetchRubyGemsReadme(docSource.PackagePath)
+		case SourceTypeGoPkgDev:
+			content, source, err = FetchPkgGoDevReadme(docSource.PackagePath)
+		case SourceTypeUnknown:
 			// Try GitHub first, then GitLab if GitHub fails
 			if strings.Contains(docSource.PackagePath, "github.com/") {
 				content, source, err = FetchGitHubReadme(docSource.PackagePath)
@@ -51,29 +64,6 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			} else {
 				return DocumentationResult{}, failure.New(ErrDocumentationFetch,
 					failure.Message("Unknown documentation source"),
-					failure.Context{
-						"source": docSource.Type.String(),
-						"pkg":    docSource.PackagePath,
-					},
-				)
-			}
-		default:
-			// For other sources, return placeholder message for now
-			u := docSource.GetURL()
-
-			switch docSource.Type {
-			case SourceTypeJSR:
-				content = fmt.Sprintf("JavaScript package documentation for %s\nSource: jsr.io", u.String())
-				source = docSource
-			case SourceTypeNPM:
-				content, source, err = FetchNPMReadme(docSource.PackagePath)
-			case SourceTypeCratesIO:
-				content, source, err = FetchCratesReadme(docSource.PackagePath)
-			case SourceTypeRubyGems:
-				content, source, err = FetchRubyGemsReadme(docSource.PackagePath)
-			default:
-				return DocumentationResult{}, failure.New(ErrDocumentationFetch,
-					failure.Message("Unsupported documentation source"),
 					failure.Context{
 						"source": docSource.Type.String(),
 						"pkg":    docSource.PackagePath,
@@ -97,6 +87,7 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 	}
 
 	// Update the docSource with related sources if available
+	// TODO: make docSource immutable
 	if result.Source != nil {
 		docSource.RelatedSources = result.Source.RelatedSources
 		docSource.Homepage = result.Source.Homepage

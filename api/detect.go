@@ -8,6 +8,9 @@ import (
 	"github.com/samber/lo"
 )
 
+// Error codes for repository detection
+type ErrCode string
+
 // SourceType represents the type of documentation source
 type SourceType string
 
@@ -274,13 +277,6 @@ func (docSource DocSource) GetRepository() (*url.URL, error) {
 		return docSource.GetURL(), nil
 	}
 
-	if docSource.Type.ContainRepositoryURL() {
-		u, err := url.Parse("https://" + docSource.PackagePath)
-		if err == nil {
-			return u, nil
-		}
-	}
-
 	// Check RelatedSources
 	for _, source := range docSource.RelatedSources {
 		t := SourceTypeFromString(source.Type.String())
@@ -289,6 +285,13 @@ func (docSource DocSource) GetRepository() (*url.URL, error) {
 			if err == nil {
 				return u, nil
 			}
+		}
+	}
+
+	if docSource.Type.ContainRepositoryURL() {
+		u, err := url.Parse("https://" + docSource.PackagePath)
+		if err == nil {
+			return u, nil
 		}
 	}
 
