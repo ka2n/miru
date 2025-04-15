@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/ka2n/miru/api"
 	"github.com/ka2n/miru/api/cache"
+	"github.com/ka2n/miru/mcp"
 	"github.com/morikuni/failure/v2"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -75,6 +76,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
 	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(mcp.Command())
 
 	// キャッシュコマンドの追加
 	cacheCmd := &cobra.Command{
