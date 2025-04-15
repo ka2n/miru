@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -18,6 +19,11 @@ const (
 	ErrGHCommandFailed ErrorCode = "GHCommandFailed"
 	// ErrREADMENotFound represents an error when README is not found
 	ErrREADMENotFound ErrorCode = "READMENotFound"
+
+	// EnvGHCommand is the environment variable name for specifying gh command path
+	EnvGHCommand = "MIRU_GH_BIN"
+	// DefaultGHCommand is the default command name for GitHub CLI
+	DefaultGHCommand = "gh"
 )
 
 // githubRepoResponse represents the GitHub API response for repository information
@@ -40,11 +46,20 @@ func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 		pkgPath = pkgPath[pos+len("github.com/"):]
 	}
 
+	// Get gh command path from environment variable or use default
+	ghCmd := DefaultGHCommand
+	if cmd := os.Getenv(EnvGHCommand); cmd != "" {
+		ghCmd = cmd
+	}
+
 	// Check if gh command exists
-	if _, err := exec.LookPath("gh"); err != nil {
+	if _, err := exec.LookPath(ghCmd); err != nil {
 		return "", nil, failure.New(ErrGHCommandNotFound,
-			failure.Message("gh command not found. Please install GitHub CLI: https://cli.github.com/"),
-			failure.Context{"error": err.Error()},
+			failure.Message(fmt.Sprintf("gh command not found at %s. Please install GitHub CLI: https://cli.github.com/ or set %s environment variable", ghCmd, EnvGHCommand)),
+			failure.Context{
+				"error": err.Error(),
+				"path":  ghCmd,
+			},
 		)
 	}
 
@@ -60,7 +75,7 @@ func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 	repo := parts[1]
 
 	// Get repository information using gh api
-	cmd := exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s", owner, repo))
+	cmd := exec.Command(ghCmd, "api", fmt.Sprintf("/repos/%s/%s", owner, repo))
 	output, err := cmd.Output()
 	if err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
@@ -80,7 +95,7 @@ func FetchGitHubReadme(pkgPath string) (string, *DocSource, error) {
 	}
 
 	// Get repository contents using gh api
-	cmd = exec.Command("gh", "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
+	cmd = exec.Command(ghCmd, "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
 	output, err = cmd.Output()
 	if err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
