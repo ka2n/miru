@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/samber/lo"
@@ -253,21 +254,36 @@ func (docSource DocSource) GetHomepage() (*url.URL, error) {
 }
 
 func (docSource DocSource) GetDocument() (*url.URL, error) {
+	var candidate *url.URL
+
+	sort.Slice(docSource.RelatedSources, func(i, j int) bool {
+		return len(docSource.RelatedSources[i].URL) < len(docSource.RelatedSources[j].URL)
+	})
+
 	for _, source := range docSource.RelatedSources {
 		t := SourceTypeFromString(source.Type.String())
 		if source.Type == RelatedSourceTypeDocumentation || t.IsDocumentation() {
 			u, err := url.Parse(source.URL)
 			if err == nil {
-				return u, nil
+				candidate = u
+				break
 			}
 		}
 	}
 
 	if docSource.Type.IsDocumentation() {
-		return docSource.GetURL(), nil
+		u := docSource.GetURL()
+		if candidate == nil {
+			candidate = u
+		} else if len(u.String()) < len(candidate.String()) {
+			candidate = u
+		}
 	}
 
-	return nil, nil
+	if candidate == nil {
+		return nil, nil
+	}
+	return candidate, nil
 }
 
 // GetRepository returns the repository URL for the package.
