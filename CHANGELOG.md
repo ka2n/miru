@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.0.7](https://github.com/ka2n/miru/compare/v0.0.6...v0.0.7) - 2025-04-15
+### New Features
+- Parse go import metadata by @ka2n in https://github.com/ka2n/miru/pull/24
+- feat: customize gh/glab CLI path with environment variables by @ka2n in https://github.com/ka2n/miru/pull/26
+- feat: MCP Server by @ka2n in https://github.com/ka2n/miru/pull/27
+### Other Changes
+- chore(deps): bump golang.org/x/net from 0.34.0 to 0.36.0 by @dependabot in https://github.com/ka2n/miru/pull/29
+- chore(deps): bump golang.org/x/crypto from 0.33.0 to 0.35.0 by @dependabot in https://github.com/ka2n/miru/pull/28
+
 ## [v0.0.6](https://github.com/ka2n/miru/compare/v0.0.5...v0.0.6) - 2025-04-14
 ### New Features
 - feat: add -o json option to output metadata with JSON by @ka2n in https://github.com/ka2n/miru/pull/15
