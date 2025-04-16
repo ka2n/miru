@@ -7,6 +7,8 @@
 
 A command-line tool for viewing package documentation with a man-like interface.
 
+<img src="./docs/screenshot.png" width="50%" alt="screenshot" />
+
 ## Features
 
 - View package documentation in terminal with man-like interface
@@ -16,6 +18,10 @@ A command-line tool for viewing package documentation with a man-like interface.
 - Configurable browser integration
 - [ ] View structured documentation
   - Show documentation from symbols, types, and functions
+
+## Screencast
+
+https://github.com/user-attachments/assets/8cbf0e44-3aea-42b7-ad40-0e95340d17db
 
 ## Installation
 
