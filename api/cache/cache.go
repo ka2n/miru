@@ -62,7 +62,7 @@ func prepareCacheDir() {
 	DefaultDir = filepath.Join(baseDir, CACHE_VERSION)
 
 	if err := os.MkdirAll(DefaultDir, 0755); err != nil {
-		// キャッシュが使えなくても機能は動作する
+		// The functionality works even if the cache is unavailable
 		fmt.Fprintln(os.Stderr, "Error creating cache directory:", err)
 	}
 
@@ -133,31 +133,31 @@ func (c *Cache[T]) GetOrSet(key string, fn func() (T, error), forceUpdate bool) 
 	normalizedKey := normalizeKey(key)
 	path := filepath.Join(c.dir, normalizedKey+"_"+c.kind+".gob")
 
-	// キャッシュの読み込み試行（forceUpdate=falseの場合のみ）
+	// Attempt to load from cache (only if forceUpdate=false)
 	if !forceUpdate {
 		if entry, err := c.loadEntry(path); err == nil {
-			// TTLチェック
+			// TTL check
 			if time.Since(entry.CreatedAt) < c.ttl {
 				return entry.Value, nil
 			}
 		}
 	}
 
-	// 値の生成
+	// Generate value
 	value, err := fn()
 	if err != nil {
 		var zero T
 		return zero, err
 	}
 
-	// キャッシュの保存
+	// Save to cache
 	entry := Entry[T]{
 		Value:     value,
 		CreatedAt: time.Now(),
 	}
 
 	if err := c.saveEntry(path, entry); err != nil {
-		return value, err // キャッシュの保存に失敗しても値は返す
+		return value, err // Return the value even if cache saving fails
 	}
 
 	return value, nil
@@ -179,7 +179,7 @@ func (c *Cache[T]) loadEntry(path string) (*Entry[T], error) {
 }
 
 func (c *Cache[T]) saveEntry(path string, entry Entry[T]) error {
-	// ディレクトリの作成
+	// Create directory
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
