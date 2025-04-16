@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.0.8](https://github.com/ka2n/miru/compare/v0.0.7...v0.0.8) - 2025-04-16
+### New Features
+- feat: change pager style by environment variables  by @ka2n in https://github.com/ka2n/miru/pull/32
+### Other Changes
+- fix(document): prefer shorter url as document URL by @ka2n in https://github.com/ka2n/miru/pull/31
+
 ## [v0.0.7](https://github.com/ka2n/miru/compare/v0.0.6...v0.0.7) - 2025-04-15
 ### New Features
 - Parse go import metadata by @ka2n in https://github.com/ka2n/miru/pull/24
