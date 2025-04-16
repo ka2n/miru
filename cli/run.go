@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/glamour/styles"
 	"github.com/ka2n/miru/api"
 	"github.com/ka2n/miru/api/cache"
 	"github.com/ka2n/miru/mcp"
@@ -161,10 +163,15 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 		return failure.Wrap(err)
 	}
 
+	styleName := os.Getenv("MIRU_PAGER_STYLE")
+	if styleName == "" {
+		styleName = styles.AutoStyle
+	}
+
 	// Render markdown with glamour
 	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
 		glamour.WithWordWrap(100),
+		glamour.WithStandardStyle(styleName),
 	)
 	if err != nil {
 		return failure.Wrap(err)

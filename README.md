@@ -7,6 +7,8 @@
 
 A command-line tool for viewing package documentation with a man-like interface.
 
+<img src="./docs/screenshot.png" width="50%" alt="screenshot" />
+
 ## Features
 
 - View package documentation in terminal with man-like interface
@@ -16,6 +18,10 @@ A command-line tool for viewing package documentation with a man-like interface.
 - Configurable browser integration
 - [ ] View structured documentation
   - Show documentation from symbols, types, and functions
+
+## Screencast
+
+https://github.com/user-attachments/assets/8cbf0e44-3aea-42b7-ad40-0e95340d17db
 
 ## Installation
 
@@ -135,6 +141,7 @@ MIRU_BROWSER_PATH=/path/to/browser  # Specify browser binary path
 MIRU_NO_CACHE=1        # Disable caching
 MIRU_GH_BIN=/usr/bin/gh        # Path to GitHub CLI
 MIRU_GLAB_BIN=/usr/bin/glab        # Path to GitLab CLI
+MIRU_PAGER_STYLE=auto # pager style: auto, dark, dracula, light, notty, pink, tokyo-night see https://github.com/charmbracelet/glamour/tree/master/styles/gallery
 ```
 
 By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) for browser integration.
