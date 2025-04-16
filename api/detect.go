@@ -134,6 +134,7 @@ var languageAliases = map[string]SourceType{
 	"typescript": SourceTypeNPM,
 	"rust":       SourceTypeCratesIO,
 	"rs":         SourceTypeCratesIO,
+	"crates":     SourceTypeCratesIO,
 	"ruby":       SourceTypeRubyGems,
 	"rb":         SourceTypeRubyGems,
 	"gem":        SourceTypeRubyGems,
