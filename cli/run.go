@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/glamour/styles"
@@ -13,6 +15,7 @@ import (
 	"github.com/ka2n/miru/mcp"
 	"github.com/morikuni/failure/v2"
 	"github.com/pkg/browser"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
 
@@ -34,24 +37,34 @@ var (
 	langFlag    string
 	outputFlag  string
 
+	rootCmd    *cobra.Command
+	versionCmd *cobra.Command
+)
+
+func init() {
 	// Root command
 	rootCmd = &cobra.Command{
 		Use:           "miru [lang] [package]",
 		Short:         "View package documentation",
 		SilenceErrors: true,
+		SilenceUsage:  true,
+		Example: `1. lang as the first argument
+  miru go github.com/spf13/cobra
+2. Using the -l flag
+  miru github.com/spf13/cobra --lang go 
+
+Supported languages:
+` + formatSupportedLanguages(),
 		Long: `miru is a CLI tool for viewing package documentation with a man-like interface.
 It supports multiple documentation sources and can display documentation in both
-terminal and browser.
-
-You can specify the language in two ways:
-1. As the first argument: miru go github.com/spf13/cobra
-2. Using the --lang flag: miru --lang go github.com/spf13/cobra`,
+terminal and browser.`,
 		Args: func(cmd *cobra.Command, args []string) error {
-			// サブコマンドの場合は引数チェックをスキップ
+			// Skip validation if the command is not root
 			if cmd.CommandPath() != "miru" {
 				return nil
 			}
-			// rootコマンド直接実行時は1-2個の引数を要求
+
+			// Validate the number of arguments
 			if len(args) < 1 || len(args) > 2 {
 				return fmt.Errorf("accepts between 1 and 2 args, but received %d", len(args))
 			}
@@ -59,6 +72,10 @@ You can specify the language in two ways:
 		},
 		RunE: runRoot,
 	}
+
+	rootCmd.Flags().BoolVarP(&browserFlag, "browser", "b", false, "Display documentation in browser")
+	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
+	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
 
 	// Version command
 	versionCmd = &cobra.Command{
@@ -71,16 +88,9 @@ You can specify the language in two ways:
 			fmt.Fprintf(out, "  commit: %s\n", api.VersionCommit)
 		},
 	}
-)
-
-func init() {
-	rootCmd.Flags().BoolVarP(&browserFlag, "browser", "b", false, "Display documentation in browser")
-	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
-	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(mcp.Command())
 
-	// キャッシュコマンドの追加
 	cacheCmd := &cobra.Command{
 		Use:   "cache",
 		Short: "Cache management commands",
@@ -99,6 +109,27 @@ func init() {
 	}
 	cacheCmd.AddCommand(cacheClearCmd)
 	rootCmd.AddCommand(cacheCmd)
+}
+
+// formatSupportedLanguages formats the supported languages for display
+func formatSupportedLanguages() string {
+	aliases := api.GetLanguageAliases()
+	bySource := lo.GroupBy(lo.Keys(aliases), func(lang string) string {
+		return (aliases[lang].String())
+	})
+
+	// format the supported languages like `rust, rs, crates => crates.io`
+	sources := lo.Keys(bySource)
+	sort.Strings(sources)
+
+	var supported strings.Builder
+	for _, sourceType := range sources {
+		alias := bySource[sourceType]
+		supported.WriteString("  ")
+		supported.WriteString(fmt.Sprintf("%s => %s", strings.Join(alias, ", "), sourceType))
+		supported.WriteString("\n")
+	}
+	return supported.String()
 }
 
 // Run executes the main CLI functionality
@@ -128,7 +159,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	docSource := api.DetectDocSource(pkg, specifiedLang)
 	if docSource.Type == api.SourceTypeUnknown {
 		return failure.New(UnsupportedLanguage,
-			failure.Message("Unsupported language"),
+			failure.Message("Unsupported language \n\nSupported languages: \n"+formatSupportedLanguages()),
 			failure.Context{
 				"language": specifiedLang,
 			},
