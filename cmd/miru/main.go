@@ -11,13 +11,17 @@ import (
 
 func main() {
 	if err := cli.Run(); err != nil {
-		var userMessage string
-		if fmsg := failure.MessageOf(err); fmsg != "" {
-			userMessage = fmsg.String()
+		if os.Getenv("MIRU_DEBUG") == "" {
+			var userMessage string
+			if fmsg := failure.MessageOf(err); fmsg != "" {
+				userMessage = fmsg.String()
+			} else {
+				userMessage = err.Error()
+			}
+			fmt.Fprintf(os.Stderr, "Error: %v\n", userMessage)
 		} else {
-			userMessage = err.Error()
+			fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
 		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", userMessage)
 		// TODO: if verbose mode, print detials like error code and callstack
 		os.Exit(1)
 	}
