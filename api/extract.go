@@ -51,6 +51,12 @@ var sourcePatterns = []sourcePattern{
 		CommandPattern: regexp.MustCompile(`gem install ([^@\s]+)`),
 		Description:    "RubyGems package reference",
 	},
+	{
+		Type:           SourceTypePyPI,
+		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?pypi\.org/project/([^/\s]+)`),
+		CommandPattern: regexp.MustCompile(`pip install ([^@=\s]+)`),
+		Description:    "Python package reference",
+	},
 }
 
 // extractSourcesFromURLs extracts RelatedSource entries from URLs.
@@ -199,6 +205,8 @@ func generatePackageURL(sourceType SourceType, pkgName string) string {
 		return fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
 	case SourceTypeJSR:
 		return fmt.Sprintf("https://jsr.io/%s", pkgName)
+	case SourceTypePyPI:
+		return fmt.Sprintf("https://pypi.org/project/%s", pkgName)
 	default:
 		panic("Unsupported source type: " + sourceType)
 	}

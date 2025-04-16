@@ -156,6 +156,7 @@ miru supports fetching documentation from:
 - crates.io
 - rubygems.org
 - jsr.io
+- pipy.org
 - github.com
 - gitlab.com
 
