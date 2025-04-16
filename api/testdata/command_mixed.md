@@ -23,3 +23,11 @@ Install Rails:
 ```bash
 gem install rails
 ```
+
+## Python Package
+
+Install Django:
+
+```bash
+pip install django
+```

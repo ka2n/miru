@@ -82,6 +82,15 @@ func TestURLExtraction(t *testing.T) {
 			filename: "url_empty.md",
 			want:     []string{},
 		},
+		{
+			name:     "Python URLs",
+			filename: "url_python.md",
+			want: []string{
+				"https://pypi.org/project/django/",
+				"https://pypi.org/project/requests/",
+				"https://pypi.org/project/numpy/",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -265,6 +274,22 @@ func TestCommandExtraction(t *testing.T) {
 			},
 		},
 		{
+			name:     "Python commands",
+			filename: "command_python.md",
+			want: []RelatedSource{
+				{
+					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
+					URL:  "https://pypi.org/project/django",
+					From: "document",
+				},
+				{
+					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
+					URL:  "https://pypi.org/project/django",
+					From: "document",
+				},
+			},
+		},
+		{
 			name:     "Mixed commands",
 			filename: "command_mixed.md",
 			want: []RelatedSource{
@@ -281,6 +306,11 @@ func TestCommandExtraction(t *testing.T) {
 				{
 					Type: RelatedSourceTypeFromString(SourceTypeRubyGems.String()),
 					URL:  "https://rubygems.org/gems/rails",
+					From: "document",
+				},
+				{
+					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
+					URL:  "https://pypi.org/project/django",
 					From: "document",
 				},
 			},

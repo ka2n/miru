@@ -53,6 +53,8 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			content, source, err = FetchCratesReadme(docSource.PackagePath)
 		case SourceTypeRubyGems:
 			content, source, err = FetchRubyGemsReadme(docSource.PackagePath)
+		case SourceTypePyPI:
+			content, source, err = FetchPyPIReadme(docSource.PackagePath)
 		case SourceTypeGoPkgDev:
 			content, source, err = FetchPkgGoDevReadme(docSource.PackagePath)
 		case SourceTypeUnknown:

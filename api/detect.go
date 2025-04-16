@@ -28,7 +28,7 @@ func SourceTypeFromString(s string) SourceType {
 // IsRegistry returns true if the source type is a package registry
 func (s SourceType) IsRegistry() bool {
 	switch s {
-	case SourceTypeGoPkgDev, SourceTypeJSR, SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems:
+	case SourceTypeGoPkgDev, SourceTypeJSR, SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems, SourceTypePyPI:
 		return true
 	default:
 		return false
@@ -109,6 +109,7 @@ const (
 	SourceTypeNPM      SourceType = "npmjs.com"
 	SourceTypeCratesIO SourceType = "crates.io"
 	SourceTypeRubyGems SourceType = "rubygems.org"
+	SourceTypePyPI     SourceType = "pypi.org"
 	SourceTypeGitHub   SourceType = "github.com"
 	SourceTypeGitLab   SourceType = "gitlab.com"
 	SourceTypeUnknown  SourceType = ""
@@ -121,23 +122,36 @@ func GetLanguageAliases() map[string]SourceType {
 
 // languageAliases maps language aliases to their canonical language name
 var languageAliases = map[string]SourceType{
-	"go":         SourceTypeGoPkgDev,
-	"golang":     SourceTypeGoPkgDev,
+	// go
+	"go":     SourceTypeGoPkgDev,
+	"golang": SourceTypeGoPkgDev,
+
+	// JavaScript, TypeScript
 	"js":         SourceTypeNPM,
 	"javascript": SourceTypeNPM,
 	"npm":        SourceTypeNPM,
 	"node":       SourceTypeNPM,
 	"nodejs":     SourceTypeNPM,
-	"jsr":        SourceTypeJSR,
 	"ts":         SourceTypeNPM,
 	"tsx":        SourceTypeNPM,
 	"typescript": SourceTypeNPM,
-	"rust":       SourceTypeCratesIO,
-	"rs":         SourceTypeCratesIO,
-	"crates":     SourceTypeCratesIO,
-	"ruby":       SourceTypeRubyGems,
-	"rb":         SourceTypeRubyGems,
-	"gem":        SourceTypeRubyGems,
+	"jsr":        SourceTypeJSR,
+
+	// rust
+	"rust":   SourceTypeCratesIO,
+	"rs":     SourceTypeCratesIO,
+	"crates": SourceTypeCratesIO,
+
+	// ruby
+	"ruby": SourceTypeRubyGems,
+	"rb":   SourceTypeRubyGems,
+	"gem":  SourceTypeRubyGems,
+
+	// python
+	"python": SourceTypePyPI,
+	"py":     SourceTypePyPI,
+	"pypi":   SourceTypePyPI,
+	"pip":    SourceTypePyPI,
 }
 
 // DetectDocSource attempts to detect the documentation source from a package path
@@ -178,6 +192,14 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 	if result.Type == SourceTypeRubyGems {
 		return DocSource{
 			Type:        SourceTypeRubyGems,
+			PackagePath: pkgPath,
+		}
+	}
+
+	// Check for Python package names (from pypi.org)
+	if result.Type == SourceTypePyPI {
+		return DocSource{
+			Type:        SourceTypePyPI,
 			PackagePath: pkgPath,
 		}
 	}
@@ -397,6 +419,13 @@ func (docSource DocSource) GetURL() *url.URL {
 			pkgName = docSource.PackagePath[idx+1:]
 		}
 		rawURL = fmt.Sprintf("https://rubygems.org/gems/%s", pkgName)
+	case SourceTypePyPI:
+		// For PyPI, use only the package name without organization
+		pkgName := docSource.PackagePath
+		if idx := strings.LastIndex(docSource.PackagePath, "/"); idx != -1 {
+			pkgName = docSource.PackagePath[idx+1:]
+		}
+		rawURL = fmt.Sprintf("https://pypi.org/project/%s", pkgName)
 	case SourceTypeGitLab:
 		rawURL = fmt.Sprintf("https://gitlab.com/%s", docSource.PackagePath)
 	default:

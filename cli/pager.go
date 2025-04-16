@@ -135,7 +135,7 @@ func (m *pagerModel) setupMenuItems() {
 		})
 	}
 
-	// その他の関連ソース
+	// Other related sources
 	for i, related := range other {
 		url := related.URL
 		items = append(items, menuItem{
@@ -157,12 +157,12 @@ func (m *pagerModel) Init() tea.Cmd {
 
 // Update handles user input and updates the model state
 func (m *pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// 共通の更新処理を実行
+	// Execute common update processing
 	if model, cmd := m.updateCommon(msg); cmd != nil {
 		return model, cmd
 	}
 
-	// モードに応じた処理を実行
+	// Execute processing according to mode
 	switch m.inputMode {
 	case searchMode:
 		return m.updateSearchMode(msg)
@@ -187,7 +187,7 @@ func (m *pagerModel) updateCommon(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.content = msg.content
 			m.docSource = msg.docSource
-			m.setupMenuItems()  // メニューを再構築
+			m.setupMenuItems()  // Rebuild menu
 			m.clearHighlights() // Clear search highlights
 			m.pagerError = ""
 		}
