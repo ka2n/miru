@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.9](https://github.com/ka2n/miru/compare/v0.0.8...v0.0.9) - 2025-04-16
+### New Features
+- cleanup error message by @ka2n in https://github.com/ka2n/miru/pull/34
+- chore: add alias: `crates` for rust by @ka2n in https://github.com/ka2n/miru/pull/33
+- support python by @ka2n in https://github.com/ka2n/miru/pull/37
+### Other Changes
+- chore: trim debug symbols, internal build path by @ka2n in https://github.com/ka2n/miru/pull/35
+
 ## [v0.0.8](https://github.com/ka2n/miru/compare/v0.0.7...v0.0.8) - 2025-04-16
 ### New Features
 - feat: change pager style by environment variables  by @ka2n in https://github.com/ka2n/miru/pull/32
