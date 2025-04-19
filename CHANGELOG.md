@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.10](https://github.com/ka2n/miru/compare/v0.0.9...v0.0.10) - 2025-04-19
+### New Features
+- feat: support PHP (packagist) by @ka2n in https://github.com/ka2n/miru/pull/38
+
 ## [v0.0.9](https://github.com/ka2n/miru/compare/v0.0.8...v0.0.9) - 2025-04-16
 ### New Features
 - cleanup error message by @ka2n in https://github.com/ka2n/miru/pull/34
