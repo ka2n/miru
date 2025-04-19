@@ -12,24 +12,13 @@ import (
 	"github.com/charmbracelet/glamour/styles"
 	"github.com/ka2n/miru/api"
 	"github.com/ka2n/miru/api/cache"
+	"github.com/ka2n/miru/api/source"
 	"github.com/ka2n/miru/mcp"
 	"github.com/morikuni/failure/v2"
 	"github.com/pkg/browser"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
-
-// DocInfo represents the JSON output structure
-type DocInfo struct {
-	Type           api.SourceType      `json:"type"`
-	PackagePath    string              `json:"package_path"`
-	URL            string              `json:"url"`
-	Homepage       string              `json:"homepage,omitempty"`
-	Repository     string              `json:"repository,omitempty"`
-	Registry       string              `json:"registry,omitempty"`
-	Document       string              `json:"document,omitempty"`
-	RelatedSources []api.RelatedSource `json:"related_sources"`
-}
 
 var (
 	// Command line flags
@@ -156,8 +145,11 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Detect documentation source from package path and language
-	docSource := api.DetectDocSource(pkg, specifiedLang)
-	if docSource.Type == api.SourceTypeUnknown {
+	initialQuery := api.NewInitialQuery(api.UserInput{
+		PackagePath: pkg,
+		Language:    specifiedLang,
+	})
+	if initialQuery.SourceRef.Type == source.TypeUnknown {
 		return failure.New(UnsupportedLanguage,
 			failure.Message("Unsupported language \n\nSupported languages: \n"+formatSupportedLanguages()),
 			failure.Context{
@@ -166,34 +158,48 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		)
 	}
 
+	var l loadFunc = func(forceUpdate bool) (api.Result, error) {
+		query := initialQuery
+		query.ForceUpdate = forceUpdate
+
+		investigation := api.NewInvestigation(query)
+		if err := investigation.Do(); err != nil {
+			return api.Result{}, err
+		}
+		return api.CreateResult(investigation), nil
+	}
+
 	if browserFlag {
-		fmt.Fprintf(logOut, "Opening documentation in browser: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
-		if err := openInBrowser(docSource); err != nil {
+		result, err := l(false)
+		if err != nil {
+			return failure.Wrap(err)
+		}
+		fmt.Fprintf(logOut, "Opening documentation in browser: %s (%s)\n", initialQuery.SourceRef.Path, initialQuery.SourceRef.Type)
+		if err := openInBrowser(result); err != nil {
+			return failure.Wrap(err)
+		}
+	} else if outputFlag == "json" {
+		result, err := l(false)
+		if err != nil {
+			return failure.Wrap(err)
+		}
+		if err := displayJSON(result, cmd.OutOrStdout()); err != nil {
 			return failure.Wrap(err)
 		}
 	} else {
-		if outputFlag == "json" {
-			if err := displayJSON(docSource, cmd.OutOrStdout()); err != nil {
-				return failure.Wrap(err)
-			}
-		} else {
-			fmt.Fprintf(logOut, "Displaying documentation: %s (%s)\n", docSource.PackagePath, docSource.Type.String())
-			if err := displayDocumentation(docSource, false); err != nil {
-				return failure.Wrap(err)
-			}
+		fmt.Fprintf(logOut, "Displaying documentation: %s (%s)\n", initialQuery.SourceRef.Path, initialQuery.SourceRef.Type)
+		if err := displayDocumentation(l); err != nil {
+			return failure.Wrap(err)
 		}
 	}
 
 	return nil
 }
 
-// displayDocumentation fetches and displays documentation in the pager
-func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
-	doc, err := api.FetchDocumentation(&docSource, forceUpdate)
-	if err != nil {
-		return failure.Wrap(err)
-	}
+type loadFunc func(forceUpdate bool) (api.Result, error)
 
+// displayDocumentation fetches and displays documentation in the pager
+func displayDocumentation(load loadFunc) error {
 	styleName := os.Getenv("MIRU_PAGER_STYLE")
 	if styleName == "" {
 		styleName = styles.AutoStyle
@@ -208,25 +214,27 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 		return failure.Wrap(err)
 	}
 
-	out, err := renderer.Render(doc)
+	// Create a reload function for the pager
+	reloadFunc := func(forceUpdate bool) (string, api.Result, error) {
+		result, err := load(forceUpdate)
+		if err != nil {
+			return "", result, failure.Wrap(err)
+		}
+		out, err := renderer.Render(result.README)
+		if err != nil {
+			return "", result, failure.Wrap(err)
+		}
+		return out, result, nil
+	}
+
+	out, r, err := reloadFunc(false)
 	if err != nil {
 		return failure.Wrap(err)
 	}
 
-	// Create a reload function for the pager
-	reloadFunc := func() (string, api.DocSource, error) {
-		doc, err := api.FetchDocumentation(&docSource, true)
-		if err != nil {
-			return "", docSource, failure.Wrap(err)
-		}
-		out, err := renderer.Render(doc)
-		if err != nil {
-			return "", docSource, failure.Wrap(err)
-		}
-		return out, docSource, nil
-	}
-
-	if err := RunPagerWithReload(out, reloadFunc, docSource); err != nil {
+	if err := RunPagerWithReload(out, func() (string, api.Result, error) {
+		return reloadFunc(true)
+	}, r); err != nil {
 		return failure.Wrap(err)
 	}
 
@@ -234,15 +242,26 @@ func displayDocumentation(docSource api.DocSource, forceUpdate bool) error {
 }
 
 // openInBrowser opens the documentation in the default browser
-func openInBrowser(docSource api.DocSource) error {
-	return browser.OpenURL(docSource.GetURL().String())
+func openInBrowser(r api.Result) error {
+	return browser.OpenURL(r.InitialQueryURL.String())
 }
 
 // displayJSON outputs the documentation source information in JSON format
-func displayJSON(docSource api.DocSource, writer io.Writer) error {
-	_, err := api.FetchDocumentation(&docSource, false)
-	if err != nil {
-		return failure.Wrap(err)
+func displayJSON(r api.Result, writer io.Writer) error {
+	type strLink struct {
+		Type source.Type
+		URL  string
+	}
+
+	// DocInfo represents the JSON output structure
+	type DocInfo struct {
+		Type       source.Type `json:"type"`
+		URL        string      `json:"url"`
+		Homepage   string      `json:"homepage,omitempty"`
+		Repository string      `json:"repository,omitempty"`
+		Registry   string      `json:"registry,omitempty"`
+		Document   string      `json:"document,omitempty"`
+		URLs       []strLink   `json:"urls"`
 	}
 
 	var (
@@ -252,33 +271,38 @@ func displayJSON(docSource api.DocSource, writer io.Writer) error {
 		docs     string
 	)
 
-	homeURL, _ := docSource.GetHomepage()
+	homeURL := r.GetHomepage()
 	if homeURL != nil {
 		homepage = homeURL.String()
 	}
-	repoURL, _ := docSource.GetRepository()
+	repoURL := r.GetRepository()
 	if repoURL != nil {
 		repo = repoURL.String()
 	}
-	registryURL, _ := docSource.GetRegistry()
+	registryURL := r.GetRegistry()
 	if registryURL != nil {
 		registry = registryURL.String()
 	}
-	docsURL, _ := docSource.GetDocument()
+	docsURL := r.GetDocumentation()
 	if docsURL != nil {
 		docs = docsURL.String()
 	}
-	other, _ := docSource.OtherLinks()
+
+	urls := lo.Map(r.Links, func(item api.Link, _ int) strLink {
+		return strLink{
+			Type: item.Type,
+			URL:  item.URL.String(),
+		}
+	})
 
 	info := DocInfo{
-		Type:           docSource.Type,
-		PackagePath:    docSource.PackagePath,
-		URL:            docSource.GetURL().String(),
-		Homepage:       homepage,
-		Repository:     repo,
-		Registry:       registry,
-		Document:       docs,
-		RelatedSources: other,
+		Type:       r.InitialQueryType,
+		URL:        r.InitialQueryURL.String(),
+		Homepage:   homepage,
+		Repository: repo,
+		Registry:   registry,
+		Document:   docs,
+		URLs:       urls,
 	}
 
 	enc := json.NewEncoder(writer)

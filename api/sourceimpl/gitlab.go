@@ -1,22 +1,25 @@
-package api
+package sourceimpl
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/ka2n/miru/api/source"
 	"github.com/morikuni/failure/v2"
 )
 
 const (
 	// ErrGLabCommandNotFound represents an error when the glab command is not found
-	ErrGLabCommandNotFound ErrorCode = "GLabCommandNotFound"
+	ErrGLabCommandNotFound ErrCode = "GLabCommandNotFound"
 	// ErrGLabCommandFailed represents an error when the glab command fails
-	ErrGLabCommandFailed ErrorCode = "GLabCommandFailed"
+	ErrGLabCommandFailed ErrCode = "GLabCommandFailed"
 
 	// EnvGLabCommand is the environment variable name for specifying glab command path
 	EnvGLabCommand = "MIRU_GLAB_BIN"
@@ -30,9 +33,9 @@ type gitlabContentsResponse struct {
 	DownloadURL string `json:"download_url"`
 }
 
-// FetchGitLabReadme fetches the README content from a GitLab repository
-// Returns the content, DocSource with related sources, and any error
-func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
+// fetchGitlab fetches the README content from a GitLab repository
+// Returns the content, related sources, and any error
+func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 	pos := strings.Index(pkgPath, "gitlab.com/")
 	if pos != -1 {
 		pkgPath = pkgPath[pos+len("gitlab.com/"):]
@@ -58,7 +61,7 @@ func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
 	// Extract owner and repo from package path (already trimmed of gitlab.com/)
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) < 2 {
-		return "", nil, failure.New(ErrDocumentationFetch,
+		return "", nil, failure.New(ErrInvalidPackagePath,
 			failure.Message("Invalid GitLab package path"),
 			failure.Context{"path": pkgPath},
 		)
@@ -121,14 +124,58 @@ func FetchGitLabReadme(pkgPath string) (string, *DocSource, error) {
 
 	// Extract related sources from content
 	docContent := string(content)
-	sources := ExtractRelatedSources(docContent, repo)
+	sources := extractRelatedSources(docContent, repo)
 
-	// Create DocSource with related sources
-	result := &DocSource{
-		Type:           SourceTypeGitLab,
-		PackagePath:    pkgPath,
-		RelatedSources: sources,
+	return docContent, sources, nil
+}
+
+// Implementation of GitLab Investigator
+type GitLabInvestigator struct{}
+
+func (i *GitLabInvestigator) Fetch(packagePath string) (source.Data, error) {
+	// Process to retrieve data from GitLab
+	content, RelatedSources, err := fetchGitlab(packagePath)
+	if err != nil {
+		return source.Data{}, err
 	}
 
-	return docContent, result, nil
+	// Generate browser URL
+	browserURL, _ := url.Parse(i.GetURL(packagePath))
+
+	return source.Data{
+		Contents:       map[string]string{"README.md": content},
+		FetchedAt:      time.Now(),
+		RelatedSources: RelatedSources,
+		BrowserURL:     browserURL,
+	}, nil
+}
+
+func (i *GitLabInvestigator) GetURL(packagePath string) string {
+	// Strip ".*gitlab.com/" prefix from package path
+	pos := strings.Index(packagePath, "gitlab.com/")
+	if pos != -1 {
+		packagePath = packagePath[pos+len("gitlab.com/"):]
+	}
+	return fmt.Sprintf("https://gitlab.com/%s", packagePath)
+}
+
+func (i *GitLabInvestigator) GetSourceType() source.Type {
+	return source.TypeGitLab
+}
+
+func (i *GitLabInvestigator) PackageFromURL(url string) (string, error) {
+	// Extract package path from GitLab URL
+	// Example: https://gitlab.com/username/repo -> username/repo
+	prefix := "https://gitlab.com/"
+	if strings.HasPrefix(url, prefix) {
+		packagePath := url[len(prefix):]
+		if packagePath == "" {
+			return "", failure.New(ErrInvalidPackagePath,
+				failure.Message("Invalid GitLab package path"),
+				failure.Context{"url": url},
+			)
+		}
+		return packagePath, nil
+	}
+	return url, nil
 }

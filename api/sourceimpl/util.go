@@ -1,32 +1,10 @@
-package api
+package sourceimpl
 
 import (
 	"strings"
-)
 
-// detectSourceTypeFromURL detects the source type from a URL
-func detectSourceTypeFromURL(url string) SourceType {
-	switch {
-	case strings.Contains(url, "github.com"):
-		return SourceTypeGitHub
-	case strings.Contains(url, "gitlab.com"):
-		return SourceTypeGitLab
-	case strings.Contains(url, "rubygems.org"):
-		return SourceTypeRubyGems
-	case strings.Contains(url, "npmjs.com"):
-		return SourceTypeNPM
-	case strings.Contains(url, "jsr.io"):
-		return SourceTypeJSR
-	case strings.Contains(url, "pkg.go.dev"):
-		return SourceTypeGoPkgDev
-	case strings.Contains(url, "crates.io"):
-		return SourceTypeCratesIO
-	case strings.Contains(url, "packagist.org"):
-		return SourceTypePackagist
-	default:
-		return SourceTypeUnknown
-	}
-}
+	"github.com/ka2n/miru/api/source"
+)
 
 // cleanupRepositoryURL converts a git-clonable URL to a browser-viewable URL
 func cleanupRepositoryURL(url string) string {
@@ -61,16 +39,15 @@ func cleanupRepositoryURL(url string) string {
 	}
 
 	// Handle specific hosting services
-	sourceType := detectSourceTypeFromURL(url)
-	switch sourceType {
-	case SourceTypeGitHub:
+	switch source.DetectSourceTypeFromURL(url) {
+	case source.TypeGitHub:
 		// GitHub URLs are already in the correct format
 		return url
-	case SourceTypeGitLab:
+	case source.TypeGitLab:
 		// GitLab URLs might need normalization
 		if strings.Contains(url, "/-/") {
 			// Remove any /-/ in the path as it's not needed for viewing
-			url = strings.Replace(url, "/-/", "/", -1)
+			url = strings.ReplaceAll(url, "/-/", "/")
 		}
 		return url
 	default:

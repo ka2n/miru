@@ -1,25 +1,28 @@
-package api
+package sourceimpl
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/ka2n/miru/api/source"
 	"github.com/morikuni/failure/v2"
 	"golang.org/x/net/html"
 )
 
 const (
-	ErrPkgGoDevREADMENotFound ErrorCode = "ErrPkgGoDevREADMENotFound"
+	ErrPkgGoDevREADMENotFound ErrCode = "ErrPkgGoDevREADMENotFound"
 )
 
-// FetchPkgGoDevReadme fetches the README file from pkg.go.dev or the source repository
-func FetchPkgGoDevReadme(pkgPath string) (string, *DocSource, error) {
+// fetchPkgGoDev fetches the README file from pkg.go.dev or the source repository
+func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 	// https://pkg.go.dev/cmd/go#hdr-Remote_import_paths
 	if strings.Contains(pkgPath, "github.com/") {
-		return FetchGitHubReadme(pkgPath)
+		return fetchGitHub(pkgPath)
 	} else if strings.Contains(pkgPath, "gitlab.com/") {
-		return FetchGitLabReadme(pkgPath)
+		return fetchGitlab(pkgPath)
 	}
 
 	repo, home, err := detectGoMetadata(pkgPath, nil)
@@ -35,34 +38,37 @@ func FetchPkgGoDevReadme(pkgPath string) (string, *DocSource, error) {
 		sourceRepoURL = home
 	}
 	if sourceRepoURL != nil {
-		var fetcher func(string) (string, *DocSource, error)
+		var content string
+		var sources []source.RelatedReference
+		var err error
+
 		if strings.Contains(sourceRepoURL.String(), "github.com") {
-			fetcher = FetchGitHubReadme
+			content, sources, err = fetchGitHub(sourceRepoURL.String())
 		} else if strings.Contains(sourceRepoURL.String(), "gitlab.com") {
-			fetcher = FetchGitLabReadme
+			content, sources, err = fetchGitlab(sourceRepoURL.String())
 		} else {
 			panic("Unsupported source repository URL: " + sourceRepoURL.String())
 		}
 
-		content, source, err := fetcher(sourceRepoURL.String())
 		if err != nil {
 			return "", nil, err
 		}
+
 		if home != nil {
-			source.RelatedSources = append(source.RelatedSources, RelatedSource{
-				Type: RelatedSourceTypeHomepage,
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
 				URL:  home.String(),
 				From: "api",
 			})
 		}
 
-		source.RelatedSources = append(source.RelatedSources, RelatedSource{
-			Type: RelatedSourceType(detectSourceTypeFromURL(sourceRepoURL.String()).String()),
+		sources = append(sources, source.RelatedReference{
+			Type: source.DetectSourceTypeFromURL(sourceRepoURL.String()),
 			URL:  sourceRepoURL.String(),
 			From: "api",
 		})
 
-		return content, source, nil
+		return content, sources, nil
 	}
 
 	return "", nil, failure.New(ErrPkgGoDevREADMENotFound,
@@ -202,4 +208,50 @@ func detectGoMetadata(pkgPath string, client *http.Client) (*url.URL, *url.URL, 
 	}
 
 	return repoURL, homepageURL, nil
+}
+
+// Implementation of GoPkgDev Investigator
+type GoPkgDevInvestigator struct{}
+
+func (i *GoPkgDevInvestigator) Fetch(packagePath string) (source.Data, error) {
+	// Process to retrieve data from pkg.go.dev
+	content, RelatedSources, err := fetchPkgGoDev(packagePath)
+	if err != nil {
+		return source.Data{}, err
+	}
+
+	// Generate browser URL
+	browserURL, _ := url.Parse(i.GetURL(packagePath))
+
+	return source.Data{
+		Contents:       map[string]string{"README.md": content},
+		FetchedAt:      time.Now(),
+		RelatedSources: RelatedSources,
+		BrowserURL:     browserURL,
+	}, nil
+}
+
+func (i *GoPkgDevInvestigator) GetURL(packagePath string) string {
+	return fmt.Sprintf("https://pkg.go.dev/%s", packagePath)
+}
+
+func (i *GoPkgDevInvestigator) GetSourceType() source.Type {
+	return source.TypeGoPkgDev
+}
+
+func (i *GoPkgDevInvestigator) PackageFromURL(url string) (string, error) {
+	// Extract package path from pkg.go.dev URL
+	// Example: https://pkg.go.dev/github.com/username/repo -> github.com/username/repo
+	prefix := "https://pkg.go.dev/"
+	if strings.HasPrefix(url, prefix) {
+		packagePath := url[len(prefix):]
+		if packagePath == "" {
+			return "", failure.New(ErrInvalidPackagePath,
+				failure.Message("Invalid Go package path"),
+				failure.Context{"url": url},
+			)
+		}
+		return packagePath, nil
+	}
+	return url, nil
 }

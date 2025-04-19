@@ -15,9 +15,9 @@ import (
 type reloadStartMsg struct{}
 
 type reloadFinishMsg struct {
-	content   string
-	docSource api.DocSource
-	err       error
+	content string
+	result  api.Result
+	err     error
 }
 
 var (
@@ -57,17 +57,17 @@ type pagerModel struct {
 	ready       bool
 	inputMode   inputMode
 	search      searchState
-	reloadFunc  func() (string, api.DocSource, error)
+	reloadFunc  func() (string, api.Result, error)
 	pagerError  string
 	isReloading bool
 
-	docSource   api.DocSource // Documentation source information
-	menuItems   []menuItem    // Menu items
-	selectedIdx int           // Currently selected index
+	result      api.Result // Documentation source information
+	menuItems   []menuItem // Menu items
+	selectedIdx int        // Currently selected index
 }
 
 // NewPager creates a new pager model with the given content
-func NewPager(content string, reloadFunc func() (string, api.DocSource, error), docSource api.DocSource) *pagerModel {
+func NewPager(content string, reloadFunc func() (string, api.Result, error), result api.Result) *pagerModel {
 	ti := textinput.New()
 	ti.Prompt = "/"
 	ti.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
@@ -75,7 +75,7 @@ func NewPager(content string, reloadFunc func() (string, api.DocSource, error), 
 	m := &pagerModel{
 		content:    content,
 		reloadFunc: reloadFunc,
-		docSource:  docSource,
+		result:     result,
 		inputMode:  normalMode,
 		search: searchState{
 			input: ti,
@@ -88,14 +88,17 @@ func NewPager(content string, reloadFunc func() (string, api.DocSource, error), 
 func (m *pagerModel) setupMenuItems() {
 	items := []menuItem{}
 
-	s := m.docSource
-	repo, _ := s.GetRepository()
-	home, _ := s.GetHomepage()
-	regi, _ := s.GetRegistry()
-	docs, _ := s.GetDocument()
-	other, _ := s.OtherLinks()
+	r := m.result
+	repo := r.GetRepository()
+	home := r.GetHomepage()
+	regi := r.GetRegistry()
+	docs := r.GetDocumentation()
+
+	seen := map[string]any{}
 
 	if repo != nil {
+		u := repo.String()
+		seen[u] = struct{}{}
 		items = append(items, menuItem{
 			label:    fmt.Sprintf("Repository: %s", repo),
 			shortcut: "g",
@@ -106,6 +109,8 @@ func (m *pagerModel) setupMenuItems() {
 	}
 
 	if regi != nil {
+		u := regi.String()
+		seen[u] = struct{}{}
 		items = append(items, menuItem{
 			label:    fmt.Sprintf("Registry: %s", regi),
 			shortcut: "r",
@@ -116,6 +121,8 @@ func (m *pagerModel) setupMenuItems() {
 	}
 
 	if home != nil {
+		u := home.String()
+		seen[u] = struct{}{}
 		items = append(items, menuItem{
 			label:    fmt.Sprintf("Homepage: %s", home),
 			shortcut: "h",
@@ -126,6 +133,8 @@ func (m *pagerModel) setupMenuItems() {
 	}
 
 	if docs != nil {
+		u := docs.String()
+		seen[u] = struct{}{}
 		items = append(items, menuItem{
 			label:    fmt.Sprintf("Documentation: %s", docs),
 			shortcut: "d",
@@ -136,13 +145,17 @@ func (m *pagerModel) setupMenuItems() {
 	}
 
 	// Other related sources
-	for i, related := range other {
-		url := related.URL
+	for i, l := range r.Links {
+		u := l.URL.String()
+		if _, ok := seen[u]; ok {
+			continue
+		}
+		seen[u] = struct{}{}
 		items = append(items, menuItem{
-			label:    fmt.Sprintf("Related: %s", related.Type),
+			label:    fmt.Sprintf("Other: %s: %s", l.Type, l.URL),
 			shortcut: fmt.Sprintf("%d", i+1),
 			action: func() error {
-				return browser.OpenURL(url)
+				return browser.OpenURL(u)
 			},
 		})
 	}
@@ -186,7 +199,7 @@ func (m *pagerModel) updateCommon(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pagerError = msg.err.Error()
 		} else {
 			m.content = msg.content
-			m.docSource = msg.docSource
+			// m.docSource = msg.docSource
 			m.setupMenuItems()  // Rebuild menu
 			m.clearHighlights() // Clear search highlights
 			m.pagerError = ""
@@ -308,8 +321,8 @@ func (m *pagerModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(
 					func() tea.Msg { return reloadStartMsg{} },
 					func() tea.Msg {
-						content, docSource, err := m.reloadFunc()
-						return reloadFinishMsg{content: content, docSource: docSource, err: err}
+						content, result, err := m.reloadFunc()
+						return reloadFinishMsg{content: content, result: result, err: err}
 					},
 				)
 			}
@@ -650,14 +663,14 @@ func filterMenuItemByShortcut(items []menuItem, shortcut string) (menuItem, bool
 }
 
 // RunPager starts the pager program with the given content
-func RunPager(content string, docSource api.DocSource) error {
-	return RunPagerWithReload(content, nil, docSource)
+func RunPager(content string, result api.Result) error {
+	return RunPagerWithReload(content, nil, result)
 }
 
 // RunPagerWithReload starts the pager program with the given content and reload function
-func RunPagerWithReload(content string, reloadFunc func() (string, api.DocSource, error), docSource api.DocSource) error {
+func RunPagerWithReload(content string, reloadFunc func() (string, api.Result, error), result api.Result) error {
 	p := tea.NewProgram(
-		NewPager(content, reloadFunc, docSource),
+		NewPager(content, reloadFunc, result),
 		tea.WithAltScreen(),
 	)
 

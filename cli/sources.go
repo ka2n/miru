@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ka2n/miru/api"
+	"github.com/ka2n/miru/api/source"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,7 @@ func init() {
 
 func runSources(cmd *cobra.Command, args []string) {
 	// Create a map to group aliases by source type
-	sourceAliases := make(map[api.SourceType][]string)
+	sourceAliases := make(map[source.Type][]string)
 
 	// Group aliases by their source type
 	for alias, source := range api.GetLanguageAliases() {
@@ -30,7 +31,7 @@ func runSources(cmd *cobra.Command, args []string) {
 	}
 
 	// Sort source types for consistent output
-	sources := make([]api.SourceType, 0, len(sourceAliases))
+	sources := make([]source.Type, 0, len(sourceAliases))
 	for source := range sourceAliases {
 		sources = append(sources, source)
 	}
@@ -48,5 +49,5 @@ func runSources(cmd *cobra.Command, args []string) {
 	}
 
 	// Display GitHub as fallback
-	fmt.Printf("  %-10s (fallback for unknown sources)\n", api.SourceTypeGitHub.String())
+	fmt.Printf("  %-10s (fallback for unknown sources)\n", source.TypeGitHub.String())
 }
