@@ -28,7 +28,7 @@ func SourceTypeFromString(s string) SourceType {
 // IsRegistry returns true if the source type is a package registry
 func (s SourceType) IsRegistry() bool {
 	switch s {
-	case SourceTypeGoPkgDev, SourceTypeJSR, SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems, SourceTypePyPI:
+	case SourceTypeGoPkgDev, SourceTypeJSR, SourceTypeNPM, SourceTypeCratesIO, SourceTypeRubyGems, SourceTypePyPI, SourceTypePackagist:
 		return true
 	default:
 		return false
@@ -104,15 +104,16 @@ func RelatedSourceTypeFromString(s string) RelatedSourceType {
 
 const (
 	// Documentation source types
-	SourceTypeGoPkgDev SourceType = "pkg.go.dev"
-	SourceTypeJSR      SourceType = "jsr.io"
-	SourceTypeNPM      SourceType = "npmjs.com"
-	SourceTypeCratesIO SourceType = "crates.io"
-	SourceTypeRubyGems SourceType = "rubygems.org"
-	SourceTypePyPI     SourceType = "pypi.org"
-	SourceTypeGitHub   SourceType = "github.com"
-	SourceTypeGitLab   SourceType = "gitlab.com"
-	SourceTypeUnknown  SourceType = ""
+	SourceTypeGoPkgDev  SourceType = "pkg.go.dev"
+	SourceTypeJSR       SourceType = "jsr.io"
+	SourceTypeNPM       SourceType = "npmjs.com"
+	SourceTypeCratesIO  SourceType = "crates.io"
+	SourceTypeRubyGems  SourceType = "rubygems.org"
+	SourceTypePyPI      SourceType = "pypi.org"
+	SourceTypePackagist SourceType = "packagist.org"
+	SourceTypeGitHub    SourceType = "github.com"
+	SourceTypeGitLab    SourceType = "gitlab.com"
+	SourceTypeUnknown   SourceType = ""
 )
 
 // GetLanguageAliases returns a map of language aliases to their documentation source types
@@ -152,6 +153,11 @@ var languageAliases = map[string]SourceType{
 	"py":     SourceTypePyPI,
 	"pypi":   SourceTypePyPI,
 	"pip":    SourceTypePyPI,
+
+	// php
+	"php":       SourceTypePackagist,
+	"packagist": SourceTypePackagist,
+	"composer":  SourceTypePackagist,
 }
 
 // DetectDocSource attempts to detect the documentation source from a package path
@@ -200,6 +206,14 @@ func DetectDocSource(pkgPath string, explicitLang string) DocSource {
 	if result.Type == SourceTypePyPI {
 		return DocSource{
 			Type:        SourceTypePyPI,
+			PackagePath: pkgPath,
+		}
+	}
+
+	// Check for PHP package names (from packagist.org)
+	if result.Type == SourceTypePackagist {
+		return DocSource{
+			Type:        SourceTypePackagist,
 			PackagePath: pkgPath,
 		}
 	}
@@ -426,6 +440,9 @@ func (docSource DocSource) GetURL() *url.URL {
 			pkgName = docSource.PackagePath[idx+1:]
 		}
 		rawURL = fmt.Sprintf("https://pypi.org/project/%s", pkgName)
+	case SourceTypePackagist:
+		// For Packagist, use the full package path (vendor/package)
+		rawURL = fmt.Sprintf("https://packagist.org/packages/%s", docSource.PackagePath)
 	case SourceTypeGitLab:
 		rawURL = fmt.Sprintf("https://gitlab.com/%s", docSource.PackagePath)
 	default:
