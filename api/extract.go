@@ -57,6 +57,12 @@ var sourcePatterns = []sourcePattern{
 		CommandPattern: regexp.MustCompile(`pip install ([^@=\s]+)`),
 		Description:    "Python package reference",
 	},
+	{
+		Type:           SourceTypePackagist,
+		URLPattern:     regexp.MustCompile(`https?://(?:www\.)?packagist\.org/packages/([^/\s]+/[^/\s]+)`),
+		CommandPattern: regexp.MustCompile(`composer (?:require|install) ([^@\s]+)`),
+		Description:    "PHP package reference",
+	},
 }
 
 // extractSourcesFromURLs extracts RelatedSource entries from URLs.
@@ -207,6 +213,8 @@ func generatePackageURL(sourceType SourceType, pkgName string) string {
 		return fmt.Sprintf("https://jsr.io/%s", pkgName)
 	case SourceTypePyPI:
 		return fmt.Sprintf("https://pypi.org/project/%s", pkgName)
+	case SourceTypePackagist:
+		return fmt.Sprintf("https://packagist.org/packages/%s", pkgName)
 	default:
 		panic("Unsupported source type: " + sourceType)
 	}

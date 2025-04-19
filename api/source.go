@@ -21,6 +21,8 @@ func detectSourceTypeFromURL(url string) SourceType {
 		return SourceTypeGoPkgDev
 	case strings.Contains(url, "crates.io"):
 		return SourceTypeCratesIO
+	case strings.Contains(url, "packagist.org"):
+		return SourceTypePackagist
 	default:
 		return SourceTypeUnknown
 	}

@@ -57,6 +57,8 @@ func FetchDocumentation(docSource *DocSource, forceUpdate bool) (string, error) 
 			content, source, err = FetchPyPIReadme(docSource.PackagePath)
 		case SourceTypeGoPkgDev:
 			content, source, err = FetchPkgGoDevReadme(docSource.PackagePath)
+		case SourceTypePackagist:
+			content, source, err = FetchPackagistReadme(docSource.PackagePath)
 		case SourceTypeUnknown:
 			// Try GitHub first, then GitLab if GitHub fails
 			if strings.Contains(docSource.PackagePath, "github.com/") {

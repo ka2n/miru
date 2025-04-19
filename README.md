@@ -111,12 +111,32 @@ miru golang.org/x/sync -b
 
 # Specify language explicitly
 miru go github.com/spf13/cobra
+miru npm express
+miru python requests
+miru ruby rails
+miru rust serde
+miru php laravel/framework
 
 # Specify language with flag
 miru github.com/spf13/cobra --lang go
 
 # Output package metadata in JSON format
 miru github.com/spf13/cobra -o json
+```
+
+List of available languages:
+
+```bash
+$ miru sources
+Documentation Sources:
+  crates.io  (crates, rs, rust)
+  jsr.io     (jsr)
+  npmjs.com  (javascript, js, node, nodejs, npm, ts, tsx, typescript)
+  packagist.org (composer, packagist, php)
+  pkg.go.dev (go, golang)
+  pypi.org   (pip, py, pypi, python)
+  rubygems.org (gem, rb, ruby)
+  github.com (fallback for unknown sources)
 ```
 
 ### MCP Server
@@ -129,7 +149,6 @@ miru mcp
 
 - **fetch_library_urls** Fetch library related URLs from repository or registry.
 - **fetch_library_docs** Fetch library documentation content and other links from repository or registry.
-
 
 ## Configuration
 
@@ -157,10 +176,12 @@ miru supports fetching documentation from:
 - rubygems.org
 - jsr.io
 - pipy.org
+- packagist.org
 - github.com
 - gitlab.com
 
 ## Development
+
 ### Package Structure
 
 ```
@@ -170,7 +191,6 @@ github.com/ka2n/miru/
 ├── mcp/      # Model Context Protocol server implementation
 └── cmd/miru/ # Main command implementation
 ```
-
 
 ### Requirements
 
