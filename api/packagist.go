@@ -47,7 +47,7 @@ func FetchPackagistReadme(pkgPath string) (string, *DocSource, error) {
 		return "", nil, failure.Wrap(err)
 	}
 
-	// Packagegist does not have a README file, but it has a description
+	// Packagist does not have a README file, but it has a description
 	if info.Package.Description == "" {
 		// Check if there are versions available
 		for _, version := range info.Package.Versions {
