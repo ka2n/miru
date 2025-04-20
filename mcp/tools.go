@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ka2n/miru/api"
+	"github.com/ka2n/miru/api/source"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mitchellh/mapstructure"
@@ -41,49 +42,52 @@ func SearchURLs() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			docSource := api.DetectDocSource(args.Package, args.Lang)
-			if docSource.Type == api.SourceTypeUnknown {
+			initialQuery := api.DetectInitialQuery(args.Package, args.Lang)
+			if initialQuery.SourceRef.Type == source.TypeUnknown {
 				return mcp.NewToolResultError("Unknown source type"), nil
 			}
 
-			_, err := api.FetchDocumentation(&docSource, false)
-			if err != nil {
+			investigation := api.NewInvestigation(initialQuery)
+			if err := investigation.Do(); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			result := api.CreateResult(investigation)
+
 			type DocInfo struct {
-				Type           api.SourceType      `json:"type"`
-				PackagePath    string              `json:"package_path"`
-				URL            string              `json:"url"`
-				Homepage       string              `json:"homepage,omitempty"`
-				Repository     string              `json:"repository,omitempty"`
-				Registry       string              `json:"registry,omitempty"`
-				Document       string              `json:"document,omitempty"`
-				RelatedSources []api.RelatedSource `json:"related_sources"`
+				Type           source.Type               `json:"type"`
+				PackagePath    string                    `json:"package_path"`
+				URL            string                    `json:"url"`
+				Homepage       string                    `json:"homepage,omitempty"`
+				Repository     string                    `json:"repository,omitempty"`
+				Registry       string                    `json:"registry,omitempty"`
+				Document       string                    `json:"document,omitempty"`
+				RelatedSources []source.RelatedReference `json:"related_sources"`
 			}
 
 			docInfo := DocInfo{
-				Type:        docSource.Type,
-				PackagePath: docSource.PackagePath,
+				URL:  result.InitialQueryURL.String(),
+				Type: result.InitialQueryType,
+				// PackagePath: docSource.PackagePath,
 			}
-			if url := docSource.GetURL(); url != nil {
-				docInfo.URL = url.String()
-			}
-			if url, err := docSource.GetHomepage(); err == nil && url != nil {
-				docInfo.Homepage = url.String()
-			}
-			if url, err := docSource.GetRepository(); err == nil && url != nil {
-				docInfo.Repository = url.String()
-			}
-			if url, err := docSource.GetRegistry(); err == nil && url != nil {
-				docInfo.Registry = url.String()
-			}
-			if url, err := docSource.GetDocument(); err == nil && url != nil {
-				docInfo.Document = url.String()
-			}
-			if other, err := docSource.OtherLinks(); err == nil && other != nil {
-				docInfo.RelatedSources = other
-			}
+			//if url := docSource.GetURL(); url != nil {
+			//	docInfo.URL = url.String()
+			//}
+			//if url, err := docSource.GetHomepage(); err == nil && url != nil {
+			//	docInfo.Homepage = url.String()
+			//}
+			//if url, err := docSource.GetRepository(); err == nil && url != nil {
+			//	docInfo.Repository = url.String()
+			//}
+			//if url, err := docSource.GetRegistry(); err == nil && url != nil {
+			//	docInfo.Registry = url.String()
+			//}
+			//if url, err := docSource.GetDocument(); err == nil && url != nil {
+			//	docInfo.Document = url.String()
+			//}
+			//if other, err := docSource.OtherLinks(); err == nil && other != nil {
+			//	docInfo.source.RelatedSources = other
+			//}
 
 			b, err := json.Marshal(docInfo)
 			if err != nil {
@@ -113,51 +117,59 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			docSource := api.DetectDocSource(args.Package, args.Lang)
-			if docSource.Type == api.SourceTypeUnknown {
+			initialQuery := api.DetectInitialQuery(args.Package, args.Lang)
+			if initialQuery.SourceRef.Type == source.TypeUnknown {
 				return mcp.NewToolResultError("Unknown source type"), nil
 			}
 
-			content, err := api.FetchDocumentation(&docSource, false)
-			if err != nil {
+			investigation := api.NewInvestigation(initialQuery)
+			if err := investigation.Do(); err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
+			result := api.CreateResult(investigation)
+
 			type DocInfo struct {
-				Type           api.SourceType      `json:"type"`
-				PackagePath    string              `json:"package_path"`
-				URL            string              `json:"url"`
-				Homepage       string              `json:"homepage,omitempty"`
-				Repository     string              `json:"repository,omitempty"`
-				Registry       string              `json:"registry,omitempty"`
-				Document       string              `json:"document,omitempty"`
-				RelatedSources []api.RelatedSource `json:"related_sources"`
-				Content        string              `json:"content,omitempty"`
+				Type           source.Type               `json:"type"`
+				PackagePath    string                    `json:"package_path"`
+				URL            string                    `json:"url"`
+				Homepage       string                    `json:"homepage,omitempty"`
+				Repository     string                    `json:"repository,omitempty"`
+				Registry       string                    `json:"registry,omitempty"`
+				Document       string                    `json:"document,omitempty"`
+				RelatedSources []source.RelatedReference `json:"related_sources"`
+				Content        string                    `json:"content,omitempty"`
 			}
 
 			docInfo := DocInfo{
-				Type:        docSource.Type,
-				PackagePath: docSource.PackagePath,
-				Content:     content,
+				URL:     result.InitialQueryURL.String(),
+				Type:    result.InitialQueryType,
+				Content: result.README,
 			}
-			if url := docSource.GetURL(); url != nil {
-				docInfo.URL = url.String()
-			}
-			if url, err := docSource.GetHomepage(); err == nil && url != nil {
-				docInfo.Homepage = url.String()
-			}
-			if url, err := docSource.GetRepository(); err == nil && url != nil {
-				docInfo.Repository = url.String()
-			}
-			if url, err := docSource.GetRegistry(); err == nil && url != nil {
-				docInfo.Registry = url.String()
-			}
-			if url, err := docSource.GetDocument(); err == nil && url != nil {
-				docInfo.Document = url.String()
-			}
-			if other, err := docSource.OtherLinks(); err == nil && other != nil {
-				docInfo.RelatedSources = other
-			}
+
+			//docInfo := DocInfo{
+			//	Type:        docSource.Type,
+			//	PackagePath: docSource.PackagePath,
+			//	Content:     content,
+			//}
+			//if url := docSource.GetURL(); url != nil {
+			//	docInfo.URL = url.String()
+			//}
+			//if url, err := docSource.GetHomepage(); err == nil && url != nil {
+			//	docInfo.Homepage = url.String()
+			//}
+			//if url, err := docSource.GetRepository(); err == nil && url != nil {
+			//	docInfo.Repository = url.String()
+			//}
+			//if url, err := docSource.GetRegistry(); err == nil && url != nil {
+			//	docInfo.Registry = url.String()
+			//}
+			//if url, err := docSource.GetDocument(); err == nil && url != nil {
+			//	docInfo.Document = url.String()
+			//}
+			//if other, err := docSource.OtherLinks(); err == nil && other != nil {
+			//	docInfo.source.RelatedSources = other
+			//}
 
 			b, err := json.Marshal(docInfo)
 			if err != nil {

@@ -28,7 +28,7 @@ type Entry[T any] struct {
 	CreatedAt time.Time
 }
 
-const CACHE_VERSION = "v1"
+const CACHE_VERSION = "v2"
 
 // Cache provides a generic caching mechanism
 type Cache[T any] struct {

@@ -1,21 +1,24 @@
-package api
+package sourceimpl
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/ka2n/miru/api/source"
 	"github.com/morikuni/failure/v2"
 )
 
 const (
 	// ErrCratesREADMENotFound represents an error when README is not found
-	ErrCratesREADMENotFound ErrorCode = "CratesREADMENotFound"
+	ErrCratesREADMENotFound ErrCode = "CratesREADMENotFound"
 	// ErrCratesPackageNotFound represents an error when package is not found
-	ErrCratesPackageNotFound ErrorCode = "CratesPackageNotFound"
+	ErrCratesPackageNotFound ErrCode = "CratesPackageNotFound"
 )
 
 // cratesPackageInfo represents the Crates.io package metadata
@@ -36,9 +39,9 @@ type cratesVersionInfo struct {
 	License    string `json:"license"`
 }
 
-// FetchCratesReadme fetches the README content from crates.io
-// Returns the content, DocSource with related sources, and any error
-func FetchCratesReadme(pkgPath string) (string, *DocSource, error) {
+// fetchCratesIO fetches the README content from crates.io
+// Returns the content, related sources, and any error
+func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	// Get package information from crates.io API
 	url := fmt.Sprintf("https://crates.io/api/v1/crates/%s?include=default_version", pkgPath)
 	resp, err := http.Get(url)
@@ -163,12 +166,13 @@ func FetchCratesReadme(pkgPath string) (string, *DocSource, error) {
 	doc := strings.Join(sections, "\n\n")
 
 	// Extract related sources from content and API response
-	var sources []RelatedSource
+	var sources []source.RelatedReference
 
 	// Add homepage if available
 	if info.Homepage != "" {
-		sources = append(sources, RelatedSource{
-			Type: RelatedSourceTypeHomepage,
+		sources = append(sources, source.RelatedReference{
+			Type: source.TypeHomepage,
+			Path: info.Homepage,
 			URL:  info.Homepage,
 			From: "api",
 		})
@@ -176,8 +180,9 @@ func FetchCratesReadme(pkgPath string) (string, *DocSource, error) {
 
 	// Add documentation if available
 	if info.Documentation != "" {
-		sources = append(sources, RelatedSource{
-			Type: RelatedSourceTypeDocumentation,
+		sources = append(sources, source.RelatedReference{
+			Type: source.TypeDocumentation,
+			Path: info.Documentation,
 			URL:  info.Documentation,
 			From: "api",
 		})
@@ -185,24 +190,68 @@ func FetchCratesReadme(pkgPath string) (string, *DocSource, error) {
 
 	// Add repository if available
 	if info.Repository != "" {
-		sources = append(sources, RelatedSource{
-			Type: RelatedSourceTypeFromString(detectSourceTypeFromURL(info.Repository).String()),
+		sources = append(sources, source.RelatedReference{
+			Type: source.DetectSourceTypeFromURL(info.Repository),
+			Path: info.Repository,
 			URL:  cleanupRepositoryURL(info.Repository),
 			From: "api",
 		})
 	}
 
 	// Extract additional sources from README content
-	docSources := ExtractRelatedSources(doc, pkgPath)
+	docSources := extractRelatedSources(doc, pkgPath)
 	sources = append(sources, docSources...)
 
-	// Create DocSource with related sources
-	result := &DocSource{
-		Type:           SourceTypeCratesIO,
-		PackagePath:    pkgPath,
-		RelatedSources: sources,
-		Homepage:       info.Homepage,
+	return doc, sources, nil
+}
+
+// Implementation of CratesIO Investigator
+type CratesIOInvestigator struct{}
+
+func (i *CratesIOInvestigator) Fetch(packagePath string) (source.Data, error) {
+	// Process to retrieve data from crates.io
+	content, relatedSources, err := fetchCratesIO(packagePath)
+	if err != nil {
+		return source.Data{}, err
 	}
 
-	return doc, result, nil
+	// Generate browser URL
+	browserURL, _ := url.Parse(i.GetURL(packagePath))
+
+	return source.Data{
+		Contents:       map[string]string{"README.md": content},
+		FetchedAt:      time.Now(),
+		RelatedSources: relatedSources,
+		BrowserURL:     browserURL,
+	}, nil
+}
+
+func (i *CratesIOInvestigator) GetURL(packagePath string) string {
+	// For crates.io, use only the package name without organization
+	pkgName := packagePath
+	if idx := strings.LastIndex(packagePath, "/"); idx != -1 {
+		pkgName = packagePath[idx+1:]
+	}
+	return fmt.Sprintf("https://crates.io/crates/%s", pkgName)
+}
+
+func (i *CratesIOInvestigator) GetSourceType() source.Type {
+	return source.TypeCratesIO
+}
+
+func (i *CratesIOInvestigator) PackageFromURL(url string) (string, error) {
+	// Extract package path from crates.io URL
+	// Example: https://crates.io/crates/package-name -> package-name
+	prefix := "https://crates.io/crates/"
+	if strings.HasPrefix(url, prefix) {
+		packagePath := url[len(prefix):]
+		if packagePath == "" {
+			return "", failure.New(ErrInvalidPackagePath,
+				failure.Message("Invalid Crates.io package path"),
+				failure.Context{"url": url},
+			)
+		}
+		return packagePath, nil
+	}
+	return url, nil
 }

@@ -1,4 +1,4 @@
-package api
+package sourceimpl
 
 import "testing"
 
@@ -58,7 +58,7 @@ func TestCleanupRepositoryURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := cleanupRepositoryURL(tt.url); got != tt.want {
-				t.Errorf("cleanupRepositoryURL() = %v, want %v", got, tt.want)
+				t.Errorf("CleanupRepositoryURL() = %v, want %v", got, tt.want)
 			}
 		})
 	}

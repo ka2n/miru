@@ -1,16 +1,20 @@
-package api
+package sourceimpl
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
+	"github.com/ka2n/miru/api/source"
 	"github.com/morikuni/failure/v2"
 )
 
 const (
 	// ErrPackagistREADMENotFound represents an error when README is not found
-	ErrPackagistREADMENotFound ErrorCode = "PackagistREADMENotFound"
+	ErrPackagistREADMENotFound ErrCode = "PackagistREADMENotFound"
 )
 
 // packagistPackageInfo represents the Packagist package information from registry
@@ -30,9 +34,9 @@ type packagistPackageInfo struct {
 	} `json:"package"`
 }
 
-// FetchPackagistReadme fetches the README content from Packagist registry
-// Returns the content, DocSource with related sources, and any error
-func FetchPackagistReadme(pkgPath string) (string, *DocSource, error) {
+// fetchPackagist fetches the README content from Packagist registry
+// Returns the content, related sources, and any error
+func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 	// Get package information from Packagist API
 	url := fmt.Sprintf("https://packagist.org/packages/%s.json", pkgPath)
 	resp, err := http.Get(url)
@@ -69,12 +73,12 @@ func FetchPackagistReadme(pkgPath string) (string, *DocSource, error) {
 	}
 
 	// Extract related sources
-	var sources []RelatedSource
+	var sources []source.RelatedReference
 
 	// Add homepage if available
 	if info.Package.Homepage != "" {
-		sources = append(sources, RelatedSource{
-			Type: RelatedSourceTypeHomepage,
+		sources = append(sources, source.RelatedReference{
+			Type: source.TypeHomepage,
 			URL:  info.Package.Homepage,
 			From: "api",
 		})
@@ -95,25 +99,63 @@ func FetchPackagistReadme(pkgPath string) (string, *DocSource, error) {
 	}
 
 	if repoURL != "" {
-		repoType := detectSourceTypeFromURL(repoURL)
-		sources = append(sources, RelatedSource{
-			Type: RelatedSourceTypeFromString(repoType.String()),
+		repoType := source.DetectSourceTypeFromURL(repoURL)
+		sources = append(sources, source.RelatedReference{
+			Type: repoType,
 			URL:  cleanupRepositoryURL(repoURL),
 			From: "api",
 		})
 	}
 
 	// Extract additional sources from README content
-	docSources := ExtractRelatedSources(info.Package.Description, pkgPath)
+	docSources := extractRelatedSources(info.Package.Description, pkgPath)
 	sources = append(sources, docSources...)
 
-	// Create DocSource
-	result := &DocSource{
-		Type:           SourceTypePackagist,
-		PackagePath:    pkgPath,
-		RelatedSources: sources,
-		Homepage:       info.Package.Homepage,
+	return info.Package.Description, sources, nil
+}
+
+// Implementation of Packagist Investigator
+type PackagistInvestigator struct{}
+
+func (i *PackagistInvestigator) Fetch(packagePath string) (source.Data, error) {
+	// Process to retrieve data from packagist.org
+	content, RelatedSources, err := fetchPackagist(packagePath)
+	if err != nil {
+		return source.Data{}, err
 	}
 
-	return info.Package.Description, result, nil
+	// Generate browser URL
+	browserURL, _ := url.Parse(i.GetURL(packagePath))
+
+	return source.Data{
+		Contents:       map[string]string{"README.md": content},
+		FetchedAt:      time.Now(),
+		RelatedSources: RelatedSources,
+		BrowserURL:     browserURL,
+	}, nil
+}
+
+func (i *PackagistInvestigator) GetURL(packagePath string) string {
+	return fmt.Sprintf("https://packagist.org/packages/%s", packagePath)
+}
+
+func (i *PackagistInvestigator) GetSourceType() source.Type {
+	return source.TypePackagist
+}
+
+func (i *PackagistInvestigator) PackageFromURL(url string) (string, error) {
+	// Extract package path from Packagist URL
+	// Example: https://packagist.org/packages/vendor/package -> vendor/package
+	prefix := "https://packagist.org/packages/"
+	if strings.HasPrefix(url, prefix) {
+		packagePath := url[len(prefix):]
+		if packagePath == "" {
+			return "", failure.New(ErrInvalidPackagePath,
+				failure.Message("Invalid Packagist package path"),
+				failure.Context{"url": url},
+			)
+		}
+		return packagePath, nil
+	}
+	return url, nil
 }

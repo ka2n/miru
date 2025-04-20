@@ -1,4 +1,4 @@
-package api
+package sourceimpl
 
 import (
 	"os"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/ka2n/miru/api/source"
 )
 
 // readTestFile reads a test file from the testdata directory
@@ -26,17 +27,17 @@ func TestExtractRelatedSources(t *testing.T) {
 Install using:
 $ npm install express
 `
-	want := []RelatedSource{
+	want := []source.RelatedReference{
 		{
-			Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
-			URL:  "https://www.npmjs.com/package/express",
+			Type: source.TypeNPM,
+			Path: "express",
 			From: "document",
 		},
 	}
 
-	got := ExtractRelatedSources(content, "express")
+	got := extractRelatedSources(content, "express")
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("ExtractRelatedSources() mismatch (-want +got):\n%s", diff)
+		t.Errorf("extractRelatedSources() mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -122,28 +123,28 @@ func TestURLExtraction(t *testing.T) {
 func TestFilterAndDeduplicate(t *testing.T) {
 	tests := []struct {
 		name           string
-		sources        []RelatedSource
+		sources        []source.RelatedReference
 		currentPackage string
-		want           []RelatedSource
+		want           []source.RelatedReference
 	}{
 		{
 			name: "Duplicate URLs",
-			sources: []RelatedSource{
+			sources: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
 			},
 			currentPackage: "express",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
@@ -151,17 +152,17 @@ func TestFilterAndDeduplicate(t *testing.T) {
 		},
 		{
 			name: "Matching package",
-			sources: []RelatedSource{
+			sources: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
 			},
 			currentPackage: "express",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
@@ -169,9 +170,9 @@ func TestFilterAndDeduplicate(t *testing.T) {
 		},
 		{
 			name: "Non-matching package",
-			sources: []RelatedSource{
+			sources: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
+					Type: source.TypeNPM,
 					URL:  "https://www.npmjs.com/package/express",
 					From: "document",
 				},
@@ -181,7 +182,7 @@ func TestFilterAndDeduplicate(t *testing.T) {
 		},
 		{
 			name:           "Empty sources",
-			sources:        []RelatedSource{},
+			sources:        []source.RelatedReference{},
 			currentPackage: "express",
 			want:           nil,
 		},
@@ -201,25 +202,25 @@ func TestCommandExtraction(t *testing.T) {
 	tests := []struct {
 		name     string
 		filename string
-		want     []RelatedSource
+		want     []source.RelatedReference
 	}{
 		{
 			name:     "NPM commands",
 			filename: "command_npm.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
-					URL:  "https://www.npmjs.com/package/express",
+					Type: source.TypeNPM,
+					Path: "express",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
-					URL:  "https://www.npmjs.com/package/express",
+					Type: source.TypeNPM,
+					Path: "express",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
-					URL:  "https://www.npmjs.com/package/express",
+					Type: source.TypeNPM,
+					Path: "express",
 					From: "document",
 				},
 			},
@@ -227,15 +228,15 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "JSR commands",
 			filename: "command_jsr.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeJSR.String()),
-					URL:  "https://jsr.io/@hono/hono",
+					Type: source.TypeJSR,
+					Path: "@hono/hono",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeJSR.String()),
-					URL:  "https://jsr.io/@hono/hono",
+					Type: source.TypeJSR,
+					Path: "@hono/hono",
 					From: "document",
 				},
 			},
@@ -243,10 +244,10 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "Cargo commands",
 			filename: "command_cargo.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeCratesIO.String()),
-					URL:  "https://crates.io/crates/tokio",
+					Type: source.TypeCratesIO,
+					Path: "tokio",
 					From: "document",
 				},
 			},
@@ -254,10 +255,10 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "Gem commands",
 			filename: "command_gem.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeRubyGems.String()),
-					URL:  "https://rubygems.org/gems/rails",
+					Type: source.TypeRubyGems,
+					Path: "rails",
 					From: "document",
 				},
 			},
@@ -265,10 +266,10 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "go commands",
 			filename: "command_go.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeGoPkgDev.String()),
-					URL:  "https://pkg.go.dev/github.com/spf13/cobra",
+					Type: source.TypeGoPkgDev,
+					Path: "github.com/spf13/cobra",
 					From: "document",
 				},
 			},
@@ -276,15 +277,15 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "Python commands",
 			filename: "command_python.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
-					URL:  "https://pypi.org/project/django",
+					Type: source.TypePyPI,
+					Path: "django",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
-					URL:  "https://pypi.org/project/django",
+					Type: source.TypePyPI,
+					Path: "django",
 					From: "document",
 				},
 			},
@@ -292,25 +293,25 @@ func TestCommandExtraction(t *testing.T) {
 		{
 			name:     "Mixed commands",
 			filename: "command_mixed.md",
-			want: []RelatedSource{
+			want: []source.RelatedReference{
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeNPM.String()),
-					URL:  "https://www.npmjs.com/package/express",
+					Type: source.TypeNPM,
+					Path: "express",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeCratesIO.String()),
-					URL:  "https://crates.io/crates/tokio",
+					Type: source.TypeCratesIO,
+					Path: "tokio",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypeRubyGems.String()),
-					URL:  "https://rubygems.org/gems/rails",
+					Type: source.TypeRubyGems,
+					Path: "rails",
 					From: "document",
 				},
 				{
-					Type: RelatedSourceTypeFromString(SourceTypePyPI.String()),
-					URL:  "https://pypi.org/project/django",
+					Type: source.TypePyPI,
+					Path: "django",
 					From: "document",
 				},
 			},
