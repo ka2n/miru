@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.11](https://github.com/ka2n/miru/compare/v0.0.10...v0.0.11) - 2025-04-20
+### Other Changes
+- refactor: refactor data flow by @ka2n in https://github.com/ka2n/miru/pull/40
+
 ## [v0.0.10](https://github.com/ka2n/miru/compare/v0.0.9...v0.0.10) - 2025-04-19
 ### New Features
 - feat: support PHP (packagist) by @ka2n in https://github.com/ka2n/miru/pull/38
