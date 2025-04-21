@@ -4,11 +4,13 @@ import (
 	"strings"
 
 	"github.com/ka2n/miru/api/source"
+	"github.com/morikuni/failure/v2"
 )
 
-// DetectInitialQuery attempts to detect the documentation source from a package path
+// detectInitialQuery attempts to detect the documentation source from a package path
 // If explicitLang is provided, it will be used as an explicit language hint
-func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
+// If error occurs, it indicates that the package path format is invalid for the explicitLang.
+func detectInitialQuery(pkgPath string, explicitLang string) (InitialQuery, error) {
 	var sourceType source.Type
 
 	// If explicit language is provided, try to resolve it
@@ -20,13 +22,29 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 
 	// Check for JavaScript package prefixes
 	if sourceType == source.TypeJSR {
+		// Append the "@" prefix if not present
+		if !strings.HasPrefix(pkgPath, "@") {
+			pkgPath = "@" + pkgPath
+		}
+
+		// Check if the package path is formatted as "@<org>/<name>"
+		if strings.Count(pkgPath, "/") != 1 {
+			return InitialQuery{}, failure.New(
+				ErrInvalidPackagePath,
+				failure.Message("JSR package path must be formatted as '@<org>/<name>'"),
+				failure.Field(failure.Context{
+					"explicitLang": explicitLang,
+					"pkgPath":      pkgPath,
+				}))
+		}
+
 		return InitialQuery{
 			SourceRef: source.Reference{
 				Type: source.TypeJSR,
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 	if sourceType == source.TypeNPM {
 		return InitialQuery{
@@ -35,7 +53,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// Check for Rust package names (from crates.io)
@@ -46,7 +64,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// Check for Ruby package names (from rubygems.org)
@@ -57,7 +75,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// Check for Python package names (from pypi.org)
@@ -68,7 +86,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// Check for PHP package names (from packagist.org)
@@ -79,7 +97,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// Check for known Go package domains
@@ -91,7 +109,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: pkgPath,
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	// For GitHub/GitLab repositories, try to detect from the path
@@ -110,7 +128,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 						Path: pkgPath,
 					},
 					ForceUpdate: false,
-				}
+				}, nil
 			}
 		}
 	}
@@ -123,7 +141,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: strings.TrimPrefix(pkgPath, "github.com/"),
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 	if strings.HasPrefix(pkgPath, "gitlab.com/") {
 		return InitialQuery{
@@ -132,7 +150,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 				Path: strings.TrimPrefix(pkgPath, "gitlab.com/"),
 			},
 			ForceUpdate: false,
-		}
+		}, nil
 	}
 
 	return InitialQuery{
@@ -141,7 +159,7 @@ func DetectInitialQuery(pkgPath string, explicitLang string) InitialQuery {
 			Path: pkgPath,
 		},
 		ForceUpdate: false,
-	}
+	}, nil
 }
 
 // GetLanguageAliases returns a map of language aliases to their documentation source types

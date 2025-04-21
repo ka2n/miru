@@ -14,7 +14,7 @@ import (
 
 const (
 	// ErrPackagistREADMENotFound represents an error when README is not found
-	ErrPackagistREADMENotFound ErrCode = "PackagistREADMENotFound"
+	ErrPackagistREADMENotFound ErrorCode = "PackagistREADMENotFound"
 )
 
 // packagistPackageInfo represents the Packagist package information from registry

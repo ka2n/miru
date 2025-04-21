@@ -42,7 +42,14 @@ func SearchURLs() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			initialQuery := api.DetectInitialQuery(args.Package, args.Lang)
+			initialQuery, err := api.NewInitialQuery(api.UserInput{
+				PackagePath: args.Package,
+				Language:    args.Lang,
+			})
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
 			if initialQuery.SourceRef.Type == source.TypeUnknown {
 				return mcp.NewToolResultError("Unknown source type"), nil
 			}
@@ -117,7 +124,13 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			initialQuery := api.DetectInitialQuery(args.Package, args.Lang)
+			initialQuery, err := api.NewInitialQuery(api.UserInput{
+				PackagePath: args.Package,
+				Language:    args.Lang,
+			})
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
 			if initialQuery.SourceRef.Type == source.TypeUnknown {
 				return mcp.NewToolResultError("Unknown source type"), nil
 			}

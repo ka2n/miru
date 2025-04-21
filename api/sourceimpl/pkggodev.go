@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	ErrPkgGoDevREADMENotFound ErrCode = "ErrPkgGoDevREADMENotFound"
+	ErrPkgGoDevREADMENotFound ErrorCode = "ErrPkgGoDevREADMENotFound"
 )
 
 // fetchPkgGoDev fetches the README file from pkg.go.dev or the source repository
@@ -81,9 +81,9 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 
 var (
 	// ErrRepositoryNotFound represents errors when repository information cannot be found
-	ErrRepositoryNotFound ErrCode = "RepositoryNotFound"
+	ErrRepositoryNotFound ErrorCode = "RepositoryNotFound"
 	// ErrInvalidMetaTag represents errors when meta tag is invalid or missing
-	ErrInvalidMetaTag ErrCode = "InvalidMetaTag"
+	ErrInvalidMetaTag ErrorCode = "InvalidMetaTag"
 )
 
 // GoMetadata contains metadata extracted from go-import and go-source meta tags

@@ -17,9 +17,9 @@ import (
 
 const (
 	// ErrGLabCommandNotFound represents an error when the glab command is not found
-	ErrGLabCommandNotFound ErrCode = "GLabCommandNotFound"
+	ErrGLabCommandNotFound ErrorCode = "GLabCommandNotFound"
 	// ErrGLabCommandFailed represents an error when the glab command fails
-	ErrGLabCommandFailed ErrCode = "GLabCommandFailed"
+	ErrGLabCommandFailed ErrorCode = "GLabCommandFailed"
 
 	// EnvGLabCommand is the environment variable name for specifying glab command path
 	EnvGLabCommand = "MIRU_GLAB_BIN"

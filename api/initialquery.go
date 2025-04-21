@@ -11,12 +11,15 @@ type InitialQuery struct {
 }
 
 // NewInitialQuery creates an initial query from user input
-func NewInitialQuery(input UserInput) InitialQuery {
+func NewInitialQuery(input UserInput) (InitialQuery, error) {
 	// Create initial query using DetectDocSource
-	initialQuery := DetectInitialQuery(input.PackagePath, input.Language)
+	initialQuery, err := detectInitialQuery(input.PackagePath, input.Language)
+	if err != nil {
+		return InitialQuery{}, err
+	}
 
 	// Set ForceUpdate flag
 	initialQuery.ForceUpdate = input.ForceUpdate
 
-	return initialQuery
+	return initialQuery, nil
 }

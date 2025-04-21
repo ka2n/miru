@@ -145,10 +145,14 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// Detect documentation source from package path and language
-	initialQuery := api.NewInitialQuery(api.UserInput{
+	initialQuery, err := api.NewInitialQuery(api.UserInput{
 		PackagePath: pkg,
 		Language:    specifiedLang,
 	})
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
 	if initialQuery.SourceRef.Type == source.TypeUnknown {
 		return failure.New(UnsupportedLanguage,
 			failure.Message("Unsupported language \n\nSupported languages: \n"+formatSupportedLanguages()),

@@ -14,7 +14,7 @@ import (
 
 const (
 	// ErrNPMREADMENotFound represents an error when README is not found
-	ErrNPMREADMENotFound ErrCode = "NPMREADMENotFound"
+	ErrNPMREADMENotFound ErrorCode = "NPMREADMENotFound"
 )
 
 // npmPackageInfo represents the npm package information from registry
