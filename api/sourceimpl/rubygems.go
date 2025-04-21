@@ -14,7 +14,7 @@ import (
 
 const (
 	// ErrRubyGemsREADMENotFound represents an error when README is not found
-	ErrRubyGemsREADMENotFound ErrCode = "RubyGemsREADMENotFound"
+	ErrRubyGemsREADMENotFound ErrorCode = "RubyGemsREADMENotFound"
 )
 
 // rubyGemsPackageInfo represents the RubyGems package information from API

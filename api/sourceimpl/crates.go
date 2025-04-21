@@ -16,9 +16,9 @@ import (
 
 const (
 	// ErrCratesREADMENotFound represents an error when README is not found
-	ErrCratesREADMENotFound ErrCode = "CratesREADMENotFound"
+	ErrCratesREADMENotFound ErrorCode = "CratesREADMENotFound"
 	// ErrCratesPackageNotFound represents an error when package is not found
-	ErrCratesPackageNotFound ErrCode = "CratesPackageNotFound"
+	ErrCratesPackageNotFound ErrorCode = "CratesPackageNotFound"
 )
 
 // cratesPackageInfo represents the Crates.io package metadata

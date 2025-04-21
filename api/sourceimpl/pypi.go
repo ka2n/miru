@@ -14,7 +14,7 @@ import (
 
 const (
 	// ErrPyPIREADMENotFound represents an error when README is not found
-	ErrPyPIREADMENotFound ErrCode = "PyPIREADMENotFound"
+	ErrPyPIREADMENotFound ErrorCode = "PyPIREADMENotFound"
 )
 
 // pypiPackageInfo represents the PyPI package information from registry

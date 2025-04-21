@@ -1,7 +1,7 @@
 package source
 
 // Error codes for repository detection
-type ErrCode string
+type ErrorCode string
 
 // Type represents the type of documentation source
 type Type string

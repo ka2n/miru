@@ -1,7 +1,7 @@
 package sourceimpl
 
-type ErrCode string
+type ErrorCode string
 
 const (
-	ErrInvalidPackagePath ErrCode = "InvalidPackagePath"
+	ErrInvalidPackagePath ErrorCode = "InvalidPackagePath"
 )

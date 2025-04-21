@@ -17,11 +17,11 @@ import (
 
 const (
 	// ErrGHCommandNotFound represents an error when the gh command is not found
-	ErrGHCommandNotFound ErrCode = "GHCommandNotFound"
+	ErrGHCommandNotFound ErrorCode = "GHCommandNotFound"
 	// ErrGHCommandFailed represents an error when the gh command fails
-	ErrGHCommandFailed ErrCode = "GHCommandFailed"
+	ErrGHCommandFailed ErrorCode = "GHCommandFailed"
 	// ErrREADMENotFound represents an error when README is not found
-	ErrREADMENotFound ErrCode = "READMENotFound"
+	ErrREADMENotFound ErrorCode = "READMENotFound"
 
 	// EnvGHCommand is the environment variable name for specifying gh command path
 	EnvGHCommand = "MIRU_GH_BIN"
