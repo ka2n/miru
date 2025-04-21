@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ka2n/miru/api/source"
+	"github.com/morikuni/failure/v2"
 )
 
 // detectInitialQuery attempts to detect the documentation source from a package path
@@ -21,6 +22,22 @@ func detectInitialQuery(pkgPath string, explicitLang string) (InitialQuery, erro
 
 	// Check for JavaScript package prefixes
 	if sourceType == source.TypeJSR {
+		// Append the "@" prefix if not present
+		if !strings.HasPrefix(pkgPath, "@") {
+			pkgPath = "@" + pkgPath
+		}
+
+		// Check if the package path is formatted as "@<org>/<name>"
+		if strings.Count(pkgPath, "/") != 1 {
+			return InitialQuery{}, failure.New(
+				ErrInvalidPackagePath,
+				failure.Message("JSR package path must be formatted as '@<org>/<name>'"),
+				failure.Field(failure.Context{
+					"explicitLang": explicitLang,
+					"pkgPath":      pkgPath,
+				}))
+		}
+
 		return InitialQuery{
 			SourceRef: source.Reference{
 				Type: source.TypeJSR,
