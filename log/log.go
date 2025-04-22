@@ -1,9 +1,12 @@
 package log
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/motemen/go-loghttp"
 )
@@ -11,12 +14,31 @@ import (
 // Logger is the global logger instance
 var Logger *slog.Logger
 
+const (
+	ADD_SOURCE = false
+)
+
 // InitLogger initializes the global logger
 // It sets the log level to Debug if MIRU_DEBUG is set
 func InitLogger() {
 	opts := &slog.HandlerOptions{
-		AddSource: false,
+		AddSource: ADD_SOURCE,
 		Level:     slog.LevelInfo,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if ADD_SOURCE {
+				// skip the call stack for the logger itself
+				if a.Key == slog.SourceKey {
+					const skip = 7
+					_, file, line, ok := runtime.Caller(skip)
+					if !ok {
+						return a
+					}
+					a.Value = slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(file), line))
+				}
+			}
+
+			return a
+		},
 	}
 
 	if os.Getenv("MIRU_DEBUG") != "" {
