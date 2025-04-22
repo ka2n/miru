@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.14](https://github.com/ka2n/miru/compare/v0.0.13...v0.0.14) - 2025-04-22
+### Other Changes
+- improve stability, robustness by @ka2n in https://github.com/ka2n/miru/pull/47
+
 ## [v0.0.13](https://github.com/ka2n/miru/compare/v0.0.12...v0.0.13) - 2025-04-22
 ### New Features
 - feat: Debug logger by @ka2n in https://github.com/ka2n/miru/pull/44
