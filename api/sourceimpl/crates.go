@@ -51,8 +51,8 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", nil, failure.New(ErrCratesPackageNotFound,
-			failure.Message("Package not found"),
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from crates.io"),
 			failure.Context{
 				"pkg": pkgPath,
 			},
@@ -170,12 +170,22 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Add homepage if available
 	if info.Homepage != "" {
-		sources = append(sources, source.RelatedReference{
-			Type: source.TypeHomepage,
-			Path: info.Homepage,
-			URL:  info.Homepage,
-			From: "api",
-		})
+		detected := source.DetectSourceTypeFromURL(info.Homepage)
+		if detected != source.TypeUnknown {
+			// Add as repository if the URL is from GitHub/GitLab
+			sources = append(sources, source.RelatedReference{
+				Type: detected,
+				URL:  cleanupURL(info.Homepage, detected),
+				From: "api",
+			})
+		} else {
+			// Add as homepage for other URLs
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
+				URL:  info.Homepage,
+				From: "api",
+			})
+		}
 	}
 
 	// Add documentation if available
@@ -193,7 +203,7 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 		sources = append(sources, source.RelatedReference{
 			Type: source.DetectSourceTypeFromURL(info.Repository),
 			Path: info.Repository,
-			URL:  cleanupRepositoryURL(info.Repository),
+			URL:  cleanupURL(info.Repository, source.TypeUnknown),
 			From: "api",
 		})
 	}

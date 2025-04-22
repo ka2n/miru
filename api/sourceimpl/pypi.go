@@ -43,6 +43,15 @@ func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from pypi.org"),
+			failure.Context{
+				"pkg": pkgPath,
+			},
+		)
+	}
+
 	// Parse JSON response
 	var info pypiPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
@@ -64,11 +73,22 @@ func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Add homepage if available
 	if info.Info.Homepage != "" {
-		sources = append(sources, source.RelatedReference{
-			Type: source.TypeHomepage,
-			URL:  info.Info.Homepage,
-			From: "api",
-		})
+		detected := source.DetectSourceTypeFromURL(info.Info.Homepage)
+		if detected != source.TypeUnknown {
+			// Add as repository if the URL is from GitHub/GitLab
+			sources = append(sources, source.RelatedReference{
+				Type: detected,
+				URL:  cleanupURL(info.Info.Homepage, source.TypeUnknown),
+				From: "api",
+			})
+		} else {
+			// Add as homepage for other URLs
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
+				URL:  info.Info.Homepage,
+				From: "api",
+			})
+		}
 	}
 
 	// Add related sources from Project URLs

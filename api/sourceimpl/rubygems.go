@@ -43,6 +43,15 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from rubygems.org"),
+			failure.Context{
+				"pkg": pkgPath,
+			},
+		)
+	}
+
 	if resp.StatusCode == http.StatusNotFound {
 		return "", nil, failure.New(ErrRubyGemsREADMENotFound,
 			failure.Message("Package not found"),
@@ -64,11 +73,22 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	// Extract related sources from API response
 	var sources []source.RelatedReference
 	if info.Homepage != "" {
-		sources = append(sources, source.RelatedReference{
-			Type: source.TypeHomepage,
-			URL:  info.Homepage,
-			From: "api",
-		})
+		detected := source.DetectSourceTypeFromURL(info.Homepage)
+		if detected != source.TypeUnknown {
+			// Add as repository if the URL is from GitHub/GitLab
+			sources = append(sources, source.RelatedReference{
+				Type: detected,
+				URL:  cleanupURL(info.Homepage, detected),
+				From: "api",
+			})
+		} else {
+			// Add as homepage for other URLs
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
+				URL:  info.Homepage,
+				From: "api",
+			})
+		}
 	}
 	if info.Documentation != "" {
 		sources = append(sources, source.RelatedReference{
@@ -80,7 +100,7 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	if info.Source != "" {
 		sources = append(sources, source.RelatedReference{
 			Type: source.DetectSourceTypeFromURL(info.Source),
-			URL:  cleanupRepositoryURL(info.Source),
+			URL:  cleanupURL(info.Source, source.TypeUnknown),
 			From: "api",
 		})
 	}

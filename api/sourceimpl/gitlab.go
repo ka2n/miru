@@ -70,6 +70,20 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 	owner := parts[0]
 	repo := parts[1]
 
+	// Remove query parameters or fragments from repo name
+	if idx := strings.Index(repo, "?"); idx != -1 {
+		repo = repo[:idx]
+	}
+	if idx := strings.Index(repo, "#"); idx != -1 {
+		repo = repo[:idx]
+	}
+	if repo == "" {
+		return "", nil, failure.New(ErrInvalidPackagePath,
+			failure.Message("Invalid GitLab package path"),
+			failure.Context{"path": pkgPath},
+		)
+	}
+
 	// Get repository contents using glab api with pagination
 	reqpath := fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo)
 	args := []string{"api", reqpath, "--paginate"}

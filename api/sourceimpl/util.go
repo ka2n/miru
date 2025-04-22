@@ -6,8 +6,8 @@ import (
 	"github.com/ka2n/miru/api/source"
 )
 
-// cleanupRepositoryURL converts a git-clonable URL to a browser-viewable URL
-func cleanupRepositoryURL(url string) string {
+// cleanupURL converts a git-clonable URL or other url to a browser-viewable URL
+func cleanupURL(url string, t source.Type) string {
 	// Remove .git suffix if present
 	url = strings.TrimSuffix(url, ".git")
 
@@ -39,7 +39,16 @@ func cleanupRepositoryURL(url string) string {
 	}
 
 	// Handle specific hosting services
-	switch source.DetectSourceTypeFromURL(url) {
+	if t == source.TypeUnknown {
+		t = source.DetectSourceTypeFromURL(url)
+	}
+
+	if t.IsRepository() {
+		// remove fragment part if present
+		url = strings.Split(url, "#")[0]
+	}
+
+	switch t {
 	case source.TypeGitHub:
 		// GitHub URLs are already in the correct format
 		return url

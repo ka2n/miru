@@ -55,11 +55,22 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 		}
 
 		if home != nil {
-			sources = append(sources, source.RelatedReference{
-				Type: source.TypeHomepage,
-				URL:  home.String(),
-				From: "api",
-			})
+			detected := source.DetectSourceTypeFromURL(home.String())
+			if detected != source.TypeUnknown {
+				// Add as repository if the URL is from GitHub/GitLab
+				sources = append(sources, source.RelatedReference{
+					Type: detected,
+					URL:  cleanupURL(home.String(), source.TypeUnknown),
+					From: "api",
+				})
+			} else {
+				// Add as homepage for other URLs
+				sources = append(sources, source.RelatedReference{
+					Type: source.TypeHomepage,
+					URL:  home.String(),
+					From: "api",
+				})
+			}
 		}
 
 		sources = append(sources, source.RelatedReference{
@@ -80,8 +91,6 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 }
 
 var (
-	// ErrRepositoryNotFound represents errors when repository information cannot be found
-	ErrRepositoryNotFound ErrorCode = "RepositoryNotFound"
 	// ErrInvalidMetaTag represents errors when meta tag is invalid or missing
 	ErrInvalidMetaTag ErrorCode = "InvalidMetaTag"
 )
@@ -120,9 +129,17 @@ func detectGoMetadata(pkgPath string, client *http.Client) (*url.URL, *url.URL, 
 	if err != nil {
 		return nil, nil, failure.Wrap(err, failure.WithCode(ErrRepositoryNotFound),
 			failure.Message("Failed to fetch go-import meta tag"),
-			failure.Context{"url": u.String()})
+			failure.Context{"url": u.String()},
+		)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch go-import meta tag"),
+			failure.Context{"url": u.String()},
+		)
+	}
 
 	// Parse HTML and find meta tag
 	doc, err := html.Parse(resp.Body)
