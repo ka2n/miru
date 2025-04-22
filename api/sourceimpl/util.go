@@ -42,6 +42,12 @@ func cleanupURL(url string, t source.Type) string {
 	if t == source.TypeUnknown {
 		t = source.DetectSourceTypeFromURL(url)
 	}
+
+	if t.IsRepository() {
+		// remove fragment part if present
+		url = strings.Split(url, "#")[0]
+	}
+
 	switch t {
 	case source.TypeGitHub:
 		// GitHub URLs are already in the correct format
