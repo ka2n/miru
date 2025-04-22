@@ -79,7 +79,7 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 	if repo == "" {
 		return "", nil, failure.New(ErrInvalidPackagePath,
-			failure.Message("Invalid GitHub package path"),
+			failure.Message("Invalid GitLab package path"),
 			failure.Context{"path": pkgPath},
 		)
 	}
