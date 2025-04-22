@@ -1,5 +1,11 @@
 # Changelog
 
+## [v0.0.13](https://github.com/ka2n/miru/compare/v0.0.12...v0.0.13) - 2025-04-22
+### New Features
+- feat: Debug logger by @ka2n in https://github.com/ka2n/miru/pull/44
+### Fix bugs
+- fix: NPM url with organization name by @ka2n in https://github.com/ka2n/miru/pull/45
+
 ## [v0.0.12](https://github.com/ka2n/miru/compare/v0.0.11...v0.0.12) - 2025-04-21
 ### New Features
 - improve JSR handling by @ka2n in https://github.com/ka2n/miru/pull/42
