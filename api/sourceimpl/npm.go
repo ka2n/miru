@@ -103,9 +103,7 @@ func (i *NPMInvestigator) Fetch(packagePath string) (source.Data, error) {
 }
 
 func (i *NPMInvestigator) GetURL(packagePath string) string {
-	// Format processing for NPM package name
-	pkgName := strings.ReplaceAll(packagePath, "/", "-")
-	return fmt.Sprintf("https://www.npmjs.com/package/%s", pkgName)
+	return fmt.Sprintf("https://www.npmjs.com/package/%s", packagePath)
 }
 
 func (i *NPMInvestigator) GetSourceType() source.Type {
@@ -115,6 +113,7 @@ func (i *NPMInvestigator) GetSourceType() source.Type {
 func (i *NPMInvestigator) PackageFromURL(url string) (string, error) {
 	// Extract package path from NPM URL
 	// Example: https://www.npmjs.com/package/package-name -> package-name
+	// Example: https://www.npmjs.com/package/org/package-name -> org/package-name
 	prefix := "https://www.npmjs.com/package/"
 	if strings.HasPrefix(url, prefix) {
 		// Convert hyphens to slashes (if necessary)
