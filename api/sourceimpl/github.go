@@ -78,6 +78,20 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	owner := parts[0]
 	repo := parts[1]
 
+	// Remove query parameters or fragments from repo name
+	if idx := strings.Index(repo, "?"); idx != -1 {
+		repo = repo[:idx]
+	}
+	if idx := strings.Index(repo, "#"); idx != -1 {
+		repo = repo[:idx]
+	}
+	if repo == "" {
+		return "", nil, failure.New(ErrInvalidPackagePath,
+			failure.Message("Invalid GitHub package path"),
+			failure.Context{"path": pkgPath},
+		)
+	}
+
 	// Get repository information using gh api
 	reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
 	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
