@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ka2n/miru/api/source"
+	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
 )
 
@@ -78,8 +79,16 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	repo := parts[1]
 
 	// Get repository information using gh api
-	cmd := exec.Command(ghCmd, "api", fmt.Sprintf("/repos/%s/%s", owner, repo))
+	reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
+	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
+	cmd := exec.Command(ghCmd, "api", reqpath)
 	output, err := cmd.Output()
+	log.Debug("Command completed",
+		"cmd", ghCmd,
+		"args", []string{reqpath},
+		"output_length", len(output),
+		"error", err,
+	)
 	if err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository information"),
@@ -98,8 +107,16 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 
 	// Get repository contents using gh api
-	cmd = exec.Command(ghCmd, "api", fmt.Sprintf("/repos/%s/%s/contents", owner, repo))
+	reqpath = fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
+	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
+	cmd = exec.Command(ghCmd, "api", reqpath)
 	output, err = cmd.Output()
+	log.Debug("Command completed",
+		"cmd", ghCmd,
+		"args", []string{reqpath},
+		"output_length", len(output),
+		"error", err,
+	)
 	if err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository contents"),

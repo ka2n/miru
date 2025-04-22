@@ -1,8 +1,6 @@
 module github.com/ka2n/miru
 
-go 1.23.2
-
-toolchain go1.23.8
+go 1.24.2
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0
@@ -15,6 +13,7 @@ require (
 	github.com/mark3labs/mcp-go v0.20.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/morikuni/failure/v2 v2.0.0-20240419002657-2551069d1c86
+	github.com/motemen/go-loghttp v0.0.0-20231107055348-29ae44b293f4
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.9.1
@@ -40,12 +39,15 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/k0kubun/pp/v3 v3.4.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
+	github.com/motemen/go-nuts v0.0.0-20220604134737-2658d0104f31 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
@@ -62,3 +64,5 @@ require (
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
+
+tool github.com/k0kubun/pp/v3

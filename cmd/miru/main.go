@@ -6,12 +6,19 @@ import (
 	"os"
 
 	"github.com/ka2n/miru/cli"
+	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
 )
 
 func main() {
+	debug := os.Getenv("MIRU_DEBUG") == "1"
+	if debug {
+		log.InitLogger()
+		log.EnableGlobalHTTP()
+	}
+
 	if err := cli.Run(); err != nil {
-		if os.Getenv("MIRU_DEBUG") == "" {
+		if !debug {
 			var userMessage string
 			if fmsg := failure.MessageOf(err); fmsg != "" {
 				userMessage = fmsg.String()
@@ -21,8 +28,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", userMessage)
 		} else {
 			fmt.Fprintf(os.Stderr, "Error: %+v\n", err)
+			log.Error("Command failed",
+				"error", err,
+				"stack", fmt.Sprintf("%+v", err),
+			)
 		}
-		// TODO: if verbose mode, print detials like error code and callstack
 		os.Exit(1)
 	}
 }

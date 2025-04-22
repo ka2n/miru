@@ -161,7 +161,7 @@ MIRU_NO_CACHE=1                     # Disable caching
 MIRU_GH_BIN=/usr/bin/gh             # Path to GitHub CLI
 MIRU_GLAB_BIN=/usr/bin/glab         # Path to GitLab CLI
 MIRU_PAGER_STYLE=auto               # pager style: auto, dark, dracula, light, notty, pink, tokyo-night see https://github.com/charmbracelet/glamour/tree/master/styles/gallery
-MIRU_DEBUG=1                        # Enable debug output
+MIRU_DEBUG=1                        # Enable debug output (HTTP requests, command execution, and detailed error information)
 ```
 
 By default, miru uses [github.com/pkg/browser](https://github.com/pkg/browser) for browser integration.
