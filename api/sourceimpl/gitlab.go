@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ka2n/miru/api/source"
+	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
 )
 
@@ -70,8 +71,17 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 	repo := parts[1]
 
 	// Get repository contents using glab api with pagination
-	cmd := exec.Command(glabCmd, "api", fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo), "--paginate")
+	reqpath := fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo)
+	args := []string{"api", reqpath, "--paginate"}
+	log.Debug("Command start", "cmd", glabCmd, "args", args)
+	cmd := exec.Command(glabCmd, args...)
 	output, err := cmd.Output()
+	log.Debug("Command completed",
+		"cmd", glabCmd,
+		"args", args,
+		"output_length", len(output),
+		"error", err,
+	)
 	if err != nil {
 		return "", nil, failure.New(ErrGLabCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
