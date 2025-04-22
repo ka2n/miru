@@ -77,11 +77,22 @@ func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Add homepage if available
 	if info.Package.Homepage != "" {
-		sources = append(sources, source.RelatedReference{
-			Type: source.TypeHomepage,
-			URL:  info.Package.Homepage,
-			From: "api",
-		})
+		detected := source.DetectSourceTypeFromURL(info.Package.Homepage)
+		if detected != source.TypeUnknown {
+			// Add as repository if the URL is from GitHub/GitLab
+			sources = append(sources, source.RelatedReference{
+				Type: detected,
+				URL:  cleanupURL(info.Package.Homepage, source.TypeUnknown),
+				From: "api",
+			})
+		} else {
+			// Add as homepage for other URLs
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
+				URL:  info.Package.Homepage,
+				From: "api",
+			})
+		}
 	}
 
 	// Add repository if available
@@ -102,7 +113,7 @@ func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 		repoType := source.DetectSourceTypeFromURL(repoURL)
 		sources = append(sources, source.RelatedReference{
 			Type: repoType,
-			URL:  cleanupRepositoryURL(repoURL),
+			URL:  cleanupURL(repoURL, source.TypeUnknown),
 			From: "api",
 		})
 	}

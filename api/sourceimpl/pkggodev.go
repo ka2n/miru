@@ -55,11 +55,22 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 		}
 
 		if home != nil {
-			sources = append(sources, source.RelatedReference{
-				Type: source.TypeHomepage,
-				URL:  home.String(),
-				From: "api",
-			})
+			detected := source.DetectSourceTypeFromURL(home.String())
+			if detected != source.TypeUnknown {
+				// Add as repository if the URL is from GitHub/GitLab
+				sources = append(sources, source.RelatedReference{
+					Type: detected,
+					URL:  cleanupURL(home.String(), source.TypeUnknown),
+					From: "api",
+				})
+			} else {
+				// Add as homepage for other URLs
+				sources = append(sources, source.RelatedReference{
+					Type: source.TypeHomepage,
+					URL:  home.String(),
+					From: "api",
+				})
+			}
 		}
 
 		sources = append(sources, source.RelatedReference{

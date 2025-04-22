@@ -1,8 +1,12 @@
 package sourceimpl
 
-import "testing"
+import (
+	"testing"
 
-func TestCleanupRepositoryURL(t *testing.T) {
+	"github.com/ka2n/miru/api/source"
+)
+
+func TestCleanupURL(t *testing.T) {
 	tests := []struct {
 		name string
 		url  string
@@ -57,7 +61,7 @@ func TestCleanupRepositoryURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := cleanupRepositoryURL(tt.url); got != tt.want {
+			if got := cleanupURL(tt.url, source.TypeUnknown); got != tt.want {
 				t.Errorf("CleanupRepositoryURL() = %v, want %v", got, tt.want)
 			}
 		})

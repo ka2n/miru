@@ -101,8 +101,8 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 
 	// Parse JSON response for repository information
-	var repoInfo githubRepoResponse
-	if err := json.Unmarshal(output, &repoInfo); err != nil {
+	var info githubRepoResponse
+	if err := json.Unmarshal(output, &info); err != nil {
 		return "", nil, failure.Wrap(err)
 	}
 
@@ -170,12 +170,23 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	sources := extractRelatedSources(docContent, repo)
 
 	// Add homepage if available
-	if repoInfo.Homepage != "" {
-		sources = append(sources, source.RelatedReference{
-			Type: source.TypeHomepage,
-			URL:  repoInfo.Homepage,
-			From: "api",
-		})
+	if info.Homepage != "" {
+		detected := source.DetectSourceTypeFromURL(info.Homepage)
+		if detected != source.TypeUnknown {
+			// Add as repository if the URL is from GitHub/GitLab
+			sources = append(sources, source.RelatedReference{
+				Type: detected,
+				URL:  cleanupURL(info.Homepage, detected),
+				From: "api",
+			})
+		} else {
+			// Add as homepage for other URLs
+			sources = append(sources, source.RelatedReference{
+				Type: source.TypeHomepage,
+				URL:  info.Homepage,
+				From: "api",
+			})
+		}
 	}
 
 	return docContent, sources, nil
