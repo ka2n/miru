@@ -27,6 +27,9 @@ func CreateResult(inv *Investigation) Result {
 
 	// Check if README content is available in the collected data
 	for _, data := range inv.CollectedData {
+		if data.FetchError != nil {
+			continue
+		}
 		// Pickup most longest README content
 		readme := data.Contents["README.md"]
 		if len(readme) > len(result.README) {

@@ -43,6 +43,15 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from rubygems.org"),
+			failure.Context{
+				"pkg": pkgPath,
+			},
+		)
+	}
+
 	if resp.StatusCode == http.StatusNotFound {
 		return "", nil, failure.New(ErrRubyGemsREADMENotFound,
 			failure.Message("Package not found"),

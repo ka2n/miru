@@ -51,8 +51,8 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", nil, failure.New(ErrCratesPackageNotFound,
-			failure.Message("Package not found"),
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from crates.io"),
 			failure.Context{
 				"pkg": pkgPath,
 			},

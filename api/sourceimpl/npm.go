@@ -38,6 +38,15 @@ func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch package information from npm registry"),
+			failure.Context{
+				"pkg": pkgPath,
+			},
+		)
+	}
+
 	// Parse JSON response
 	var info npmPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {

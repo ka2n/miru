@@ -91,8 +91,6 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 }
 
 var (
-	// ErrRepositoryNotFound represents errors when repository information cannot be found
-	ErrRepositoryNotFound ErrorCode = "RepositoryNotFound"
 	// ErrInvalidMetaTag represents errors when meta tag is invalid or missing
 	ErrInvalidMetaTag ErrorCode = "InvalidMetaTag"
 )
@@ -131,9 +129,17 @@ func detectGoMetadata(pkgPath string, client *http.Client) (*url.URL, *url.URL, 
 	if err != nil {
 		return nil, nil, failure.Wrap(err, failure.WithCode(ErrRepositoryNotFound),
 			failure.Message("Failed to fetch go-import meta tag"),
-			failure.Context{"url": u.String()})
+			failure.Context{"url": u.String()},
+		)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, failure.New(ErrRepositoryNotFound,
+			failure.Message("Failed to fetch go-import meta tag"),
+			failure.Context{"url": u.String()},
+		)
+	}
 
 	// Parse HTML and find meta tag
 	doc, err := html.Parse(resp.Body)
