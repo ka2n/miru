@@ -8,8 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/glamour/styles"
 	"github.com/ka2n/miru/api"
 	"github.com/ka2n/miru/api/cache"
 	"github.com/ka2n/miru/api/source"
@@ -205,18 +203,6 @@ type loadFunc func(forceUpdate bool) (api.Result, error)
 // displayDocumentation fetches and displays documentation in the pager
 func displayDocumentation(load loadFunc) error {
 	styleName := os.Getenv("MIRU_PAGER_STYLE")
-	if styleName == "" {
-		styleName = styles.AutoStyle
-	}
-
-	// Render markdown with glamour
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithWordWrap(100),
-		glamour.WithStandardStyle(styleName),
-	)
-	if err != nil {
-		return failure.Wrap(err)
-	}
 
 	// Create a reload function for the pager
 	reloadFunc := func(forceUpdate bool) (string, api.Result, error) {
@@ -224,11 +210,7 @@ func displayDocumentation(load loadFunc) error {
 		if err != nil {
 			return "", result, failure.Wrap(err)
 		}
-		out, err := renderer.Render(result.README)
-		if err != nil {
-			return "", result, failure.Wrap(err)
-		}
-		return out, result, nil
+		return result.README, result, nil
 	}
 
 	out, r, err := reloadFunc(false)
@@ -236,7 +218,7 @@ func displayDocumentation(load loadFunc) error {
 		return failure.Wrap(err)
 	}
 
-	if err := RunPagerWithReload(out, func() (string, api.Result, error) {
+	if err := RunPagerWithReload(out, styleName, func() (string, api.Result, error) {
 		return reloadFunc(true)
 	}, r); err != nil {
 		return failure.Wrap(err)
