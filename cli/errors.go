@@ -10,6 +10,7 @@ const (
 	InvalidArguments    ErrorCode = "InvalidArguments"
 	UnsupportedLanguage ErrorCode = "UnsupportedLanguage"
 	UnsupportedSource   ErrorCode = "UnsupportedSource"
+	ErrInvalidURL       ErrorCode = "ErrInvalidURL"
 )
 
 func (c ErrorCode) ErrorCode() string {
