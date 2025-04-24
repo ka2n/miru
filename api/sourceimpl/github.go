@@ -1,6 +1,7 @@
 package sourceimpl
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/ka2n/miru/api/source"
 	"github.com/morikuni/failure/v2"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -96,55 +98,42 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		)
 	}
 
-	// Get repository information using gh api
-	reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
+	// Variables for parallel processing
 	var info githubRepoResponse
-	if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &info); err != nil {
-		return "", nil, failure.New(ErrGHCommandFailed,
-			failure.Message("Failed to fetch repository information"),
-			failure.Context{
-				"error": err.Error(),
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
-
-	// Get repository contents using gh api
-	reqpath = fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
-	var contents []githubContentsResponse
-	if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &contents); err != nil {
-		return "", nil, failure.New(ErrGHCommandFailed,
-			failure.Message("Failed to fetch repository contents"),
-			failure.Context{
-				"error": err.Error(),
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
-
-	sources := make([]source.RelatedReference, 0)
-
-	// Find README file
 	var docContent string
-	var readmePath string
-	for _, file := range contents {
-		if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
-			readmePath = file.Path
-			break
-		}
-	}
+	var readmeSources []source.RelatedReference
 
-	// Download README by GitHub API content if found.
-	// We don't use download_url here, because GitHub API provides symbolic resolution for symlinked files.
-	if readmePath != "" {
-		// Get repository contents using gh api
-		reqpath = fmt.Sprintf("/repos/%s/%s/contents/%s", owner, repo, readmePath)
-		var content githubContentResponse
-		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &content); err != nil {
-			return "", nil, failure.New(ErrGHCommandFailed,
-				failure.Message("Failed to fetch README content"),
+	// Create errgroup.Group
+	// NOTE: Can we use GraphQL API to fetch repository information and contents in a single request?
+	g, _ := errgroup.WithContext(context.Background())
+
+	// Goroutine to fetch repository information
+	g.Go(func() error {
+		reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
+		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &info); err != nil {
+			return failure.New(ErrGHCommandFailed,
+				failure.Message("Failed to fetch repository information"),
+				failure.Context{
+					"error": err.Error(),
+					"owner": owner,
+					"repo":  repo,
+				},
+			)
+		}
+		return nil
+	})
+
+	// Goroutine to handle all README-related operations:
+	// 1. Fetch repository contents
+	// 2. Find README file
+	// 3. Fetch README content if found
+	g.Go(func() error {
+		// Step 1: Fetch repository contents
+		reqpath := fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
+		var contents []githubContentsResponse
+		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &contents); err != nil {
+			return failure.New(ErrGHCommandFailed,
+				failure.Message("Failed to fetch repository contents"),
 				failure.Context{
 					"error": err.Error(),
 					"owner": owner,
@@ -153,18 +142,56 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 			)
 		}
 
-		r, err := content.GetContent()
-		if err != nil {
-			return "", nil, failure.Wrap(err)
+		// Step 2: Find README file
+		var readmePath string
+		for _, file := range contents {
+			if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
+				readmePath = file.Path
+				break
+			}
 		}
-		d, err := io.ReadAll(r)
-		if err != nil {
-			return "", nil, failure.Wrap(err)
-		}
-		docContent = string(d)
 
-		sources = append(sources, extractRelatedSources(docContent, repo)...)
+		// Step 3: Fetch README content if found
+		// We don't use download_url here, because GitHub API provides symbolic resolution for symlinked files.
+		if readmePath != "" {
+			reqpath := fmt.Sprintf("/repos/%s/%s/contents/%s", owner, repo, readmePath)
+			var content githubContentResponse
+			if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &content); err != nil {
+				return failure.New(ErrGHCommandFailed,
+					failure.Message("Failed to fetch README content"),
+					failure.Context{
+						"error": err.Error(),
+						"owner": owner,
+						"repo":  repo,
+					},
+				)
+			}
+
+			r, err := content.GetContent()
+			if err != nil {
+				return failure.Wrap(err)
+			}
+			d, err := io.ReadAll(r)
+			if err != nil {
+				return failure.Wrap(err)
+			}
+			docContent = string(d)
+
+			// Extract related sources from README content
+			readmeSources = extractRelatedSources(docContent, repo)
+		}
+
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
+		return "", nil, err
 	}
+
+	// Combine all sources
+	sources := make([]source.RelatedReference, 0, len(readmeSources)+1)
+	sources = append(sources, readmeSources...)
 
 	// Add homepage if available
 	if info.Homepage != "" {
