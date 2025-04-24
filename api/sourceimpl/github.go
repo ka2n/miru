@@ -1,10 +1,9 @@
 package sourceimpl
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -21,9 +20,6 @@ const (
 	ErrGHCommandNotFound ErrorCode = "GHCommandNotFound"
 	// ErrGHCommandFailed represents an error when the gh command fails
 	ErrGHCommandFailed ErrorCode = "GHCommandFailed"
-	// ErrREADMENotFound represents an error when README is not found
-	ErrREADMENotFound ErrorCode = "READMENotFound"
-
 	// EnvGHCommand is the environment variable name for specifying gh command path
 	EnvGHCommand = "MIRU_GH_BIN"
 	// DefaultGHCommand is the default command name for GitHub CLI
@@ -38,7 +34,16 @@ type githubRepoResponse struct {
 // githubContentsResponse represents the GitHub API response for repository contents
 type githubContentsResponse struct {
 	Name        string `json:"name"`
+	Path        string `json:"path"`
 	DownloadURL string `json:"download_url"`
+}
+
+type githubContentResponse struct {
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	Type     string `json:"type"`
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
 }
 
 // fetchGitHub fetches the README content from a GitHub repository
@@ -148,40 +153,66 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		return "", nil, failure.Wrap(err)
 	}
 
+	sources := make([]source.RelatedReference, 0)
+
 	// Find README file
-	var readmeURL string
+	var docContent string
+	var readmePath string
 	for _, file := range contents {
 		if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
-			readmeURL = file.DownloadURL
+			readmePath = file.Path
 			break
 		}
 	}
 
-	if readmeURL == "" {
-		return "", nil, failure.New(ErrREADMENotFound,
-			failure.Message("README not found in repository"),
-			failure.Context{
-				"owner": owner,
-				"repo":  repo,
-			},
+	// Download README by GitHub API content if found.
+	// We don't use download_url here, because GitHub API provides symbolic resolution for symlinked files.
+	if readmePath != "" {
+		// Get repository contents using gh api
+		reqpath = fmt.Sprintf("/repos/%s/%s/contents/%s", owner, repo, readmePath)
+		log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
+		cmd = exec.Command(ghCmd, "api", reqpath)
+		output, err = cmd.Output()
+		log.Debug("Command completed",
+			"cmd", ghCmd,
+			"args", []string{reqpath},
+			"output_length", len(output),
+			"error", err,
 		)
-	}
+		if err != nil {
+			return "", nil, failure.New(ErrGHCommandFailed,
+				failure.Message("Failed to fetch README content"),
+				failure.Context{
+					"error": err.Error(),
+					"owner": owner,
+					"repo":  repo,
+				},
+			)
+		}
 
-	// Download README content
-	resp, err := http.Get(readmeURL)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
+		// Parse JSON response
+		var content githubContentResponse
+		if err := json.Unmarshal(output, &content); err != nil {
+			return "", nil, failure.Wrap(err)
+		}
+		if content.Encoding != "base64" {
+			return "", nil, failure.New(ErrGHCommandFailed,
+				failure.Message("README content is not base64 encoded"),
+				failure.Context{
+					"owner":    owner,
+					"repo":     repo,
+					"encoding": content.Encoding,
+				},
+			)
+		}
+		// Decode base64 content
+		decodedContent, err := base64.StdEncoding.DecodeString(content.Content)
+		if err != nil {
+			return "", nil, failure.Wrap(err)
+		}
+		docContent = string(decodedContent)
+		sources = append(sources, extractRelatedSources(docContent, repo)...)
 	}
-	defer resp.Body.Close()
-
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-
-	// Extract related sources from content
-	docContent := string(content)
-	sources := extractRelatedSources(docContent, repo)
 
 	// Add homepage if available
 	if info.Homepage != "" {
@@ -211,7 +242,7 @@ type GitHubInvestigator struct{}
 
 func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from GitHub
-	content, RelatedSources, err := fetchGitHub(packagePath)
+	content, rel, err := fetchGitHub(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -222,7 +253,7 @@ func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
 		FetchedAt:      time.Now(),
-		RelatedSources: RelatedSources,
+		RelatedSources: rel,
 		BrowserURL:     browserURL,
 	}, nil
 }
