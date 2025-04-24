@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.16](https://github.com/ka2n/miru/compare/v0.0.15...v0.0.16) - 2025-04-24
+### Other Changes
+- improvements by @ka2n in https://github.com/ka2n/miru/pull/51
+
 ## [v0.0.15](https://github.com/ka2n/miru/compare/v0.0.14...v0.0.15) - 2025-04-24
 ### Other Changes
 - feat: refine pager UI by @ka2n in https://github.com/ka2n/miru/pull/49
