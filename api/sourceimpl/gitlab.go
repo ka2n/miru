@@ -113,7 +113,10 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 		return "", nil, failure.Wrap(err)
 	}
 
+	sources := make([]source.RelatedReference, 0)
+
 	// Find README file
+	var docContent string
 	var readmeURL string
 	for _, file := range allContents {
 		if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
@@ -124,31 +127,21 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 		}
 	}
 
-	if readmeURL == "" {
-		return "", nil, failure.New(ErrREADMENotFound,
-			failure.Message("README not found in repository"),
-			failure.Context{
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
+	// Download README content if found
+	if readmeURL != "" {
+		resp, err := http.Get(readmeURL)
+		if err != nil {
+			return "", nil, failure.Wrap(err)
+		}
+		defer resp.Body.Close()
 
-	// Download README content
-	resp, err := http.Get(readmeURL)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
+		content, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", nil, failure.Wrap(err)
+		}
+		docContent = string(content)
+		sources = append(sources, extractRelatedSources(docContent, repo)...)
 	}
-	defer resp.Body.Close()
-
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-
-	// Extract related sources from content
-	docContent := string(content)
-	sources := extractRelatedSources(docContent, repo)
 
 	return docContent, sources, nil
 }

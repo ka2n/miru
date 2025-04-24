@@ -12,11 +12,6 @@ import (
 	"github.com/morikuni/failure/v2"
 )
 
-const (
-	// ErrNPMREADMENotFound represents an error when README is not found
-	ErrNPMREADMENotFound ErrorCode = "NPMREADMENotFound"
-)
-
 // npmPackageInfo represents the npm package information from registry
 type npmPackageInfo struct {
 	Readme     string `json:"readme"`
@@ -51,15 +46,6 @@ func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
 	var info npmPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return "", nil, failure.Wrap(err)
-	}
-
-	if info.Readme == "" {
-		return "", nil, failure.New(ErrNPMREADMENotFound,
-			failure.Message("README not found in package"),
-			failure.Context{
-				"pkg": pkgPath,
-			},
-		)
 	}
 
 	// Extract related sources from content and API response
@@ -105,6 +91,7 @@ func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
 type NPMInvestigator struct{}
 
 func (i *NPMInvestigator) Fetch(packagePath string) (source.Data, error) {
+
 	// Process to retrieve data from NPM
 	content, RelatedSources, err := fetchNPM(packagePath)
 	if err != nil {
