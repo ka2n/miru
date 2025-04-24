@@ -2,8 +2,8 @@ package sourceimpl
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ka2n/miru/api/source"
-	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
 )
 
@@ -99,16 +98,8 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Get repository information using gh api
 	reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
-	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
-	cmd := exec.Command(ghCmd, "api", reqpath)
-	output, err := cmd.Output()
-	log.Debug("Command completed",
-		"cmd", ghCmd,
-		"args", []string{reqpath},
-		"output_length", len(output),
-		"error", err,
-	)
-	if err != nil {
+	var info githubRepoResponse
+	if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &info); err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository information"),
 			failure.Context{
@@ -119,24 +110,10 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		)
 	}
 
-	// Parse JSON response for repository information
-	var info githubRepoResponse
-	if err := json.Unmarshal(output, &info); err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-
 	// Get repository contents using gh api
 	reqpath = fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
-	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
-	cmd = exec.Command(ghCmd, "api", reqpath)
-	output, err = cmd.Output()
-	log.Debug("Command completed",
-		"cmd", ghCmd,
-		"args", []string{reqpath},
-		"output_length", len(output),
-		"error", err,
-	)
-	if err != nil {
+	var contents []githubContentsResponse
+	if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &contents); err != nil {
 		return "", nil, failure.New(ErrGHCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
 			failure.Context{
@@ -145,12 +122,6 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 				"repo":  repo,
 			},
 		)
-	}
-
-	// Parse JSON response
-	var contents []githubContentsResponse
-	if err := json.Unmarshal(output, &contents); err != nil {
-		return "", nil, failure.Wrap(err)
 	}
 
 	sources := make([]source.RelatedReference, 0)
@@ -170,16 +141,8 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	if readmePath != "" {
 		// Get repository contents using gh api
 		reqpath = fmt.Sprintf("/repos/%s/%s/contents/%s", owner, repo, readmePath)
-		log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
-		cmd = exec.Command(ghCmd, "api", reqpath)
-		output, err = cmd.Output()
-		log.Debug("Command completed",
-			"cmd", ghCmd,
-			"args", []string{reqpath},
-			"output_length", len(output),
-			"error", err,
-		)
-		if err != nil {
+		var content githubContentResponse
+		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &content); err != nil {
 			return "", nil, failure.New(ErrGHCommandFailed,
 				failure.Message("Failed to fetch README content"),
 				failure.Context{
@@ -190,27 +153,16 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 			)
 		}
 
-		// Parse JSON response
-		var content githubContentResponse
-		if err := json.Unmarshal(output, &content); err != nil {
-			return "", nil, failure.Wrap(err)
-		}
-		if content.Encoding != "base64" {
-			return "", nil, failure.New(ErrGHCommandFailed,
-				failure.Message("README content is not base64 encoded"),
-				failure.Context{
-					"owner":    owner,
-					"repo":     repo,
-					"encoding": content.Encoding,
-				},
-			)
-		}
-		// Decode base64 content
-		decodedContent, err := base64.StdEncoding.DecodeString(content.Content)
+		r, err := content.GetContent()
 		if err != nil {
 			return "", nil, failure.Wrap(err)
 		}
-		docContent = string(decodedContent)
+		d, err := io.ReadAll(r)
+		if err != nil {
+			return "", nil, failure.Wrap(err)
+		}
+		docContent = string(d)
+
 		sources = append(sources, extractRelatedSources(docContent, repo)...)
 	}
 
@@ -235,6 +187,20 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 
 	return docContent, sources, nil
+}
+
+func (c githubContentResponse) GetContent() (io.Reader, error) {
+	if c.Encoding != "base64" {
+		return nil, failure.New(ErrGHCommandFailed,
+			failure.Message("the content is not base64 encoded"),
+			failure.Context{
+				"encoding": c.Encoding,
+			},
+		)
+	}
+
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(c.Content))
+	return reader, nil
 }
 
 // Implementation of GitHub Investigator

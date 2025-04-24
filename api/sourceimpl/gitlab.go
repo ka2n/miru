@@ -1,7 +1,6 @@
 package sourceimpl
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ka2n/miru/api/source"
-	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
 )
 
@@ -87,16 +85,8 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 	// Get repository contents using glab api with pagination
 	reqpath := fmt.Sprintf("/projects/%s%%2F%s/repository/tree", owner, repo)
 	args := []string{"api", reqpath, "--paginate"}
-	log.Debug("Command start", "cmd", glabCmd, "args", args)
-	cmd := exec.Command(glabCmd, args...)
-	output, err := cmd.Output()
-	log.Debug("Command completed",
-		"cmd", glabCmd,
-		"args", args,
-		"output_length", len(output),
-		"error", err,
-	)
-	if err != nil {
+	var allContents []gitlabContentsResponse
+	if err := execCmdJSON(glabCmd, args, &allContents); err != nil {
 		return "", nil, failure.New(ErrGLabCommandFailed,
 			failure.Message("Failed to fetch repository contents"),
 			failure.Context{
@@ -105,12 +95,6 @@ func fetchGitlab(pkgPath string) (string, []source.RelatedReference, error) {
 				"repo":  repo,
 			},
 		)
-	}
-
-	// Parse JSON response
-	var allContents []gitlabContentsResponse
-	if err := json.Unmarshal(output, &allContents); err != nil {
-		return "", nil, failure.Wrap(err)
 	}
 
 	sources := make([]source.RelatedReference, 0)
