@@ -1,10 +1,10 @@
 package sourceimpl
 
 import (
-	"encoding/json"
+	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ka2n/miru/api/source"
-	"github.com/ka2n/miru/log"
 	"github.com/morikuni/failure/v2"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -21,9 +21,6 @@ const (
 	ErrGHCommandNotFound ErrorCode = "GHCommandNotFound"
 	// ErrGHCommandFailed represents an error when the gh command fails
 	ErrGHCommandFailed ErrorCode = "GHCommandFailed"
-	// ErrREADMENotFound represents an error when README is not found
-	ErrREADMENotFound ErrorCode = "READMENotFound"
-
 	// EnvGHCommand is the environment variable name for specifying gh command path
 	EnvGHCommand = "MIRU_GH_BIN"
 	// DefaultGHCommand is the default command name for GitHub CLI
@@ -38,7 +35,16 @@ type githubRepoResponse struct {
 // githubContentsResponse represents the GitHub API response for repository contents
 type githubContentsResponse struct {
 	Name        string `json:"name"`
+	Path        string `json:"path"`
 	DownloadURL string `json:"download_url"`
+}
+
+type githubContentResponse struct {
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	Type     string `json:"type"`
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
 }
 
 // fetchGitHub fetches the README content from a GitHub repository
@@ -92,96 +98,100 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		)
 	}
 
-	// Get repository information using gh api
-	reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
-	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
-	cmd := exec.Command(ghCmd, "api", reqpath)
-	output, err := cmd.Output()
-	log.Debug("Command completed",
-		"cmd", ghCmd,
-		"args", []string{reqpath},
-		"output_length", len(output),
-		"error", err,
-	)
-	if err != nil {
-		return "", nil, failure.New(ErrGHCommandFailed,
-			failure.Message("Failed to fetch repository information"),
-			failure.Context{
-				"error": err.Error(),
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
-
-	// Parse JSON response for repository information
+	// Variables for parallel processing
 	var info githubRepoResponse
-	if err := json.Unmarshal(output, &info); err != nil {
-		return "", nil, failure.Wrap(err)
-	}
+	var docContent string
+	var readmeSources []source.RelatedReference
 
-	// Get repository contents using gh api
-	reqpath = fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
-	log.Debug("Command start", "cmd", ghCmd, "args", []string{reqpath})
-	cmd = exec.Command(ghCmd, "api", reqpath)
-	output, err = cmd.Output()
-	log.Debug("Command completed",
-		"cmd", ghCmd,
-		"args", []string{reqpath},
-		"output_length", len(output),
-		"error", err,
-	)
-	if err != nil {
-		return "", nil, failure.New(ErrGHCommandFailed,
-			failure.Message("Failed to fetch repository contents"),
-			failure.Context{
-				"error": err.Error(),
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
+	// Create errgroup.Group
+	// NOTE: Can we use GraphQL API to fetch repository information and contents in a single request?
+	g, _ := errgroup.WithContext(context.Background())
 
-	// Parse JSON response
-	var contents []githubContentsResponse
-	if err := json.Unmarshal(output, &contents); err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-
-	// Find README file
-	var readmeURL string
-	for _, file := range contents {
-		if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
-			readmeURL = file.DownloadURL
-			break
+	// Goroutine to fetch repository information
+	g.Go(func() error {
+		reqpath := fmt.Sprintf("/repos/%s/%s", owner, repo)
+		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &info); err != nil {
+			return failure.New(ErrGHCommandFailed,
+				failure.Message("Failed to fetch repository information"),
+				failure.Context{
+					"error": err.Error(),
+					"owner": owner,
+					"repo":  repo,
+				},
+			)
 		}
+		return nil
+	})
+
+	// Goroutine to handle all README-related operations:
+	// 1. Fetch repository contents
+	// 2. Find README file
+	// 3. Fetch README content if found
+	g.Go(func() error {
+		// Step 1: Fetch repository contents
+		reqpath := fmt.Sprintf("/repos/%s/%s/contents", owner, repo)
+		var contents []githubContentsResponse
+		if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &contents); err != nil {
+			return failure.New(ErrGHCommandFailed,
+				failure.Message("Failed to fetch repository contents"),
+				failure.Context{
+					"error": err.Error(),
+					"owner": owner,
+					"repo":  repo,
+				},
+			)
+		}
+
+		// Step 2: Find README file
+		var readmePath string
+		for _, file := range contents {
+			if strings.HasPrefix(strings.ToLower(file.Name), "readme.") || strings.ToLower(file.Name) == "readme" {
+				readmePath = file.Path
+				break
+			}
+		}
+
+		// Step 3: Fetch README content if found
+		// We don't use download_url here, because GitHub API provides symbolic resolution for symlinked files.
+		if readmePath != "" {
+			reqpath := fmt.Sprintf("/repos/%s/%s/contents/%s", owner, repo, readmePath)
+			var content githubContentResponse
+			if err := execCmdJSON(ghCmd, []string{"api", reqpath}, &content); err != nil {
+				return failure.New(ErrGHCommandFailed,
+					failure.Message("Failed to fetch README content"),
+					failure.Context{
+						"error": err.Error(),
+						"owner": owner,
+						"repo":  repo,
+					},
+				)
+			}
+
+			r, err := content.GetContent()
+			if err != nil {
+				return failure.Wrap(err)
+			}
+			d, err := io.ReadAll(r)
+			if err != nil {
+				return failure.Wrap(err)
+			}
+			docContent = string(d)
+
+			// Extract related sources from README content
+			readmeSources = extractRelatedSources(docContent, repo)
+		}
+
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
+		return "", nil, err
 	}
 
-	if readmeURL == "" {
-		return "", nil, failure.New(ErrREADMENotFound,
-			failure.Message("README not found in repository"),
-			failure.Context{
-				"owner": owner,
-				"repo":  repo,
-			},
-		)
-	}
-
-	// Download README content
-	resp, err := http.Get(readmeURL)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-	defer resp.Body.Close()
-
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, failure.Wrap(err)
-	}
-
-	// Extract related sources from content
-	docContent := string(content)
-	sources := extractRelatedSources(docContent, repo)
+	// Combine all sources
+	sources := make([]source.RelatedReference, 0, len(readmeSources)+1)
+	sources = append(sources, readmeSources...)
 
 	// Add homepage if available
 	if info.Homepage != "" {
@@ -206,12 +216,26 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	return docContent, sources, nil
 }
 
+func (c githubContentResponse) GetContent() (io.Reader, error) {
+	if c.Encoding != "base64" {
+		return nil, failure.New(ErrGHCommandFailed,
+			failure.Message("the content is not base64 encoded"),
+			failure.Context{
+				"encoding": c.Encoding,
+			},
+		)
+	}
+
+	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(c.Content))
+	return reader, nil
+}
+
 // Implementation of GitHub Investigator
 type GitHubInvestigator struct{}
 
 func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from GitHub
-	content, RelatedSources, err := fetchGitHub(packagePath)
+	content, rel, err := fetchGitHub(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -222,7 +246,7 @@ func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
 		FetchedAt:      time.Now(),
-		RelatedSources: RelatedSources,
+		RelatedSources: rel,
 		BrowserURL:     browserURL,
 	}, nil
 }

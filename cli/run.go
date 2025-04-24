@@ -229,6 +229,11 @@ func displayDocumentation(load loadFunc) error {
 
 // openInBrowser opens the documentation in the default browser
 func openInBrowser(r api.Result) error {
+	if r.InitialQueryURL == nil {
+		return failure.New(ErrInvalidURL,
+			failure.Message("No URL available to open in browser"),
+		)
+	}
 	return browser.OpenURL(r.InitialQueryURL.String())
 }
 
@@ -281,9 +286,14 @@ func displayJSON(r api.Result, writer io.Writer) error {
 		}
 	})
 
+	var url string
+	if r.InitialQueryURL != nil {
+		url = r.InitialQueryURL.String()
+	}
+
 	info := DocInfo{
 		Type:       r.InitialQueryType,
-		URL:        r.InitialQueryURL.String(),
+		URL:        url,
 		Homepage:   homepage,
 		Repository: repo,
 		Registry:   registry,
