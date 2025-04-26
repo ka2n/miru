@@ -13,6 +13,7 @@ import (
 	"github.com/ka2n/miru/api/cache"
 	"github.com/ka2n/miru/api/source"
 	"github.com/ka2n/miru/mcp"
+	"github.com/mattn/go-isatty"
 	"github.com/morikuni/failure/v2"
 	"github.com/pkg/browser"
 	"github.com/samber/lo"
@@ -222,8 +223,6 @@ type loadFunc func(forceUpdate bool) (api.Result, error)
 func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) error {
 	fmt.Fprintf(logger, "Displaying documentation: %s (%s)\n", i.SourceRef.Path, i.SourceRef.Type)
 
-	styleName := os.Getenv("MIRU_PAGER_STYLE")
-
 	// Create a reload function for the pager
 	reloadFunc := func(forceUpdate bool) (string, api.Result, error) {
 		result, err := load(forceUpdate)
@@ -238,6 +237,15 @@ func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) e
 		return failure.Wrap(err)
 	}
 
+	// Check if stdout is a terminal
+	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
+		// If not a terminal, print content directly to stdout
+		fmt.Fprintln(os.Stdout, out)
+		return nil
+	}
+
+	// If terminal is available, use the pager
+	styleName := os.Getenv("MIRU_PAGER_STYLE")
 	if err := RunPagerWithReload(out, styleName, func() (string, api.Result, error) {
 		return reloadFunc(true)
 	}, r); err != nil {
