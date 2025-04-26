@@ -250,6 +250,7 @@ func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) e
 // openInBrowser opens the documentation in the default browser
 func openInBrowser(i api.InitialQuery, r api.Result, target string, logger io.Writer) error {
 	var u *url.URL
+	target = strings.ToLower(target)
 	switch target {
 	case "h", "homepage":
 		u = r.GetHomepage()
