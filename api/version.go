@@ -8,7 +8,7 @@ import (
 
 // Version and VersionCommit hold the version information
 var (
-	Version       = "0.0.17"
+	Version       = "0.0.18"
 	VersionCommit = ""
 )
 
