@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.17](https://github.com/ka2n/miru/compare/v0.0.16...v0.0.17) - 2025-04-26
+### Other Changes
+- feat: open specific target(homepage, repository, registry) by -b flag by @ka2n in https://github.com/ka2n/miru/pull/54
+
 ## [v0.0.16](https://github.com/ka2n/miru/compare/v0.0.15...v0.0.16) - 2025-04-24
 ### Other Changes
 - improvements by @ka2n in https://github.com/ka2n/miru/pull/51
