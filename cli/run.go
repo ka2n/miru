@@ -240,7 +240,7 @@ func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) e
 	// Check if stdout is a terminal
 	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
 		// If not a terminal, print content directly to stdout
-		fmt.Fprint(os.Stdout, out)
+		fmt.Fprintln(os.Stdout, out)
 		return nil
 	}
 
