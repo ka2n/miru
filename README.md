@@ -95,6 +95,7 @@ View package documentation in terminal:
 ```bash
 miru [package]                    # Display documentation in man-like interface
 miru [package] -b                 # Open documentation in browser
+miru [package] -b=[target]                 # Open specific documentation in browser
 miru [lang] [package]             # Specify package language explicitly
 miru [package] --lang [lang]      # Specify package language with flag
 miru [package] -o json           # Output metadata in JSON format
