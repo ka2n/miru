@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -20,9 +21,9 @@ import (
 
 var (
 	// Command line flags
-	browserFlag bool
-	langFlag    string
-	outputFlag  string
+	browserFlg browseTargetFlag
+	langFlg    string
+	outputFlag string
 
 	rootCmd    *cobra.Command
 	versionCmd *cobra.Command
@@ -41,7 +42,9 @@ func init() {
   miru github.com/spf13/cobra --lang go 
 
 Supported languages:
-` + formatSupportedLanguages(),
+` + formatSupportedLanguages() + `
+Supported target(for -b= flag):
+` + formatSupportedBrowserTargets(),
 		Long: `miru is a CLI tool for viewing package documentation with a man-like interface.
 It supports multiple documentation sources and can display documentation in both
 terminal and browser.`,
@@ -52,16 +55,14 @@ terminal and browser.`,
 			}
 
 			// Validate the number of arguments
-			if len(args) < 1 || len(args) > 2 {
-				return fmt.Errorf("accepts between 1 and 2 args, but received %d", len(args))
-			}
-			return nil
+			return cobra.RangeArgs(1, 2)(cmd, args)
 		},
 		RunE: runRoot,
 	}
 
-	rootCmd.Flags().BoolVarP(&browserFlag, "browser", "b", false, "Display documentation in browser")
-	rootCmd.Flags().StringVarP(&langFlag, "lang", "l", "", "Specify package language explicitly")
+	rootCmd.Flags().VarP(&browserFlg, "browser", "b", "Open browser")
+	rootCmd.Flag("browser").NoOptDefVal = "default"
+	rootCmd.Flags().StringVarP(&langFlg, "lang", "l", "", "Specify package language explicitly")
 	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
 
 	// Version command
@@ -119,6 +120,15 @@ func formatSupportedLanguages() string {
 	return supported.String()
 }
 
+func formatSupportedBrowserTargets() string {
+	var supported strings.Builder
+	supported.WriteString("  r, registry => Registry URL\n")
+	supported.WriteString("  g, repository => Repository URL\n")
+	supported.WriteString("  h, homepage => Homepage URL\n")
+	supported.WriteString("  default => source URL\n")
+	return supported.String()
+}
+
 // Run executes the main CLI functionality
 func Run() error {
 	return rootCmd.Execute()
@@ -138,8 +148,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 
 	// If language is specified via flag, it takes precedence
-	if langFlag != "" {
-		specifiedLang = langFlag
+	if langFlg != "" {
+		specifiedLang = langFlg
 	}
 
 	// Detect documentation source from package path and language
@@ -171,28 +181,36 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return api.CreateResult(investigation), nil
 	}
 
-	if browserFlag {
+	// Browse mode
+	if browserFlg.IsSet {
 		result, err := l(false)
 		if err != nil {
 			return failure.Wrap(err)
 		}
-		fmt.Fprintf(logOut, "Opening documentation in browser: %s (%s)\n", initialQuery.SourceRef.Path, initialQuery.SourceRef.Type)
-		if err := openInBrowser(result); err != nil {
+
+		if err := openInBrowser(initialQuery, result, browserFlg.String(), logOut); err != nil {
 			return failure.Wrap(err)
 		}
-	} else if outputFlag == "json" {
+
+		return nil
+	}
+
+	// JSON mode
+	if outputFlag == "json" {
 		result, err := l(false)
 		if err != nil {
 			return failure.Wrap(err)
 		}
-		if err := displayJSON(result, cmd.OutOrStdout()); err != nil {
+		if err := displayJSON(initialQuery, result, cmd.OutOrStdout()); err != nil {
 			return failure.Wrap(err)
 		}
-	} else {
-		fmt.Fprintf(logOut, "Displaying documentation: %s (%s)\n", initialQuery.SourceRef.Path, initialQuery.SourceRef.Type)
-		if err := displayDocumentation(l); err != nil {
-			return failure.Wrap(err)
-		}
+
+		return nil
+	}
+
+	// Pager mode
+	if err := displayDocumentation(initialQuery, l, logOut); err != nil {
+		return failure.Wrap(err)
 	}
 
 	return nil
@@ -201,7 +219,9 @@ func runRoot(cmd *cobra.Command, args []string) error {
 type loadFunc func(forceUpdate bool) (api.Result, error)
 
 // displayDocumentation fetches and displays documentation in the pager
-func displayDocumentation(load loadFunc) error {
+func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) error {
+	fmt.Fprintf(logger, "Displaying documentation: %s (%s)\n", i.SourceRef.Path, i.SourceRef.Type)
+
 	styleName := os.Getenv("MIRU_PAGER_STYLE")
 
 	// Create a reload function for the pager
@@ -228,17 +248,33 @@ func displayDocumentation(load loadFunc) error {
 }
 
 // openInBrowser opens the documentation in the default browser
-func openInBrowser(r api.Result) error {
-	if r.InitialQueryURL == nil {
+func openInBrowser(i api.InitialQuery, r api.Result, target string, logger io.Writer) error {
+	var u *url.URL
+	switch target {
+	case "h", "homepage":
+		u = r.GetHomepage()
+	case "g", "repository", "repo":
+		u = r.GetRepository()
+	case "r", "registry":
+		u = r.GetRegistry()
+	case "default", "":
+		fallthrough
+	default:
+		u = r.InitialQueryURL
+	}
+
+	if u == nil {
 		return failure.New(ErrInvalidURL,
 			failure.Message("No URL available to open in browser"),
 		)
 	}
-	return browser.OpenURL(r.InitialQueryURL.String())
+
+	fmt.Fprintf(logger, "Opening documentation in browser: %s (%s)\n", i.SourceRef.Path, i.SourceRef.Type)
+	return browser.OpenURL(u.String())
 }
 
 // displayJSON outputs the documentation source information in JSON format
-func displayJSON(r api.Result, writer io.Writer) error {
+func displayJSON(i api.InitialQuery, r api.Result, writer io.Writer) error {
 	type strLink struct {
 		Type source.Type
 		URL  string
