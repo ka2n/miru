@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.18](https://github.com/ka2n/miru/compare/v0.0.17...v0.0.18) - 2025-04-26
+### New Features
+- Add direct output to stdout when TTY is not available by @ka2n in https://github.com/ka2n/miru/pull/56
+
 ## [v0.0.17](https://github.com/ka2n/miru/compare/v0.0.16...v0.0.17) - 2025-04-26
 ### Other Changes
 - feat: open specific target(homepage, repository, registry) by -b flag by @ka2n in https://github.com/ka2n/miru/pull/54
