@@ -60,10 +60,28 @@ func (r Result) GetHomepage() *url.URL {
 	return nil
 }
 
+func (r Result) GetHomepageLink() *Link {
+	for i, link := range r.Links {
+		if link.Type == source.TypeHomepage {
+			return &r.Links[i]
+		}
+	}
+	return nil
+}
+
 func (r Result) GetDocumentation() *url.URL {
 	for _, link := range r.Links {
 		if link.Type.IsDocumentation() {
 			return link.URL
+		}
+	}
+	return nil
+}
+
+func (r Result) GetDocumentationLink() *Link {
+	for i, link := range r.Links {
+		if link.Type.IsDocumentation() {
+			return &r.Links[i]
 		}
 	}
 	return nil
@@ -78,10 +96,28 @@ func (r Result) GetRegistry() *url.URL {
 	return nil
 }
 
+func (r Result) GetRegistryLink() *Link {
+	for i, link := range r.Links {
+		if link.Type.IsRegistry() {
+			return &r.Links[i]
+		}
+	}
+	return nil
+}
+
 func (r Result) GetRepository() *url.URL {
 	for _, link := range r.Links {
 		if link.Type.IsRepository() {
 			return link.URL
+		}
+	}
+	return nil
+}
+
+func (r Result) GetRepositoryLink() *Link {
+	for i, link := range r.Links {
+		if link.Type.IsRepository() {
+			return &r.Links[i]
 		}
 	}
 	return nil
