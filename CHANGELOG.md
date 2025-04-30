@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.19](https://github.com/ka2n/miru/compare/v0.0.18...v0.0.19) - 2025-04-30
+### New Features
+- feat(mcp/fetch_library_docs): fetch documentation as markdown by @ka2n in https://github.com/ka2n/miru/pull/58
+
 ## [v0.0.18](https://github.com/ka2n/miru/compare/v0.0.17...v0.0.18) - 2025-04-26
 ### New Features
 - Add direct output to stdout when TTY is not available by @ka2n in https://github.com/ka2n/miru/pull/56
