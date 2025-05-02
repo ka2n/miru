@@ -12,6 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mitchellh/mapstructure"
+	"github.com/samber/lo"
 )
 
 var validate = validator.New()
@@ -61,44 +62,71 @@ func SearchURLs() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 
-			result := api.CreateResult(investigation)
+			r := api.CreateResult(investigation)
 
+			type strLink struct {
+				Type source.Type
+				URL  string
+			}
+
+			// DocInfo represents the JSON output structure
 			type DocInfo struct {
-				Type           source.Type               `json:"type"`
-				PackagePath    string                    `json:"package_path"`
-				URL            string                    `json:"url"`
-				Homepage       string                    `json:"homepage,omitempty"`
-				Repository     string                    `json:"repository,omitempty"`
-				Registry       string                    `json:"registry,omitempty"`
-				Document       string                    `json:"document,omitempty"`
-				RelatedSources []source.RelatedReference `json:"related_sources"`
+				Type       source.Type `json:"type"`
+				URL        string      `json:"url"`
+				Homepage   string      `json:"homepage,omitempty"`
+				Repository string      `json:"repository,omitempty"`
+				Registry   string      `json:"registry,omitempty"`
+				Document   string      `json:"document,omitempty"`
+				URLs       []strLink   `json:"urls"`
 			}
 
-			docInfo := DocInfo{
-				URL:  result.InitialQueryURL.String(),
-				Type: result.InitialQueryType,
-				// PackagePath: docSource.PackagePath,
-			}
-			//if url := docSource.GetURL(); url != nil {
-			//	docInfo.URL = url.String()
-			//}
-			//if url, err := docSource.GetHomepage(); err == nil && url != nil {
-			//	docInfo.Homepage = url.String()
-			//}
-			//if url, err := docSource.GetRepository(); err == nil && url != nil {
-			//	docInfo.Repository = url.String()
-			//}
-			//if url, err := docSource.GetRegistry(); err == nil && url != nil {
-			//	docInfo.Registry = url.String()
-			//}
-			//if url, err := docSource.GetDocument(); err == nil && url != nil {
-			//	docInfo.Document = url.String()
-			//}
-			//if other, err := docSource.OtherLinks(); err == nil && other != nil {
-			//	docInfo.source.RelatedSources = other
-			//}
+			var (
+				homepage string
+				repo     string
+				registry string
+				docs     string
+			)
 
-			b, err := json.Marshal(docInfo)
+			homeURL := r.GetHomepage()
+			if homeURL != nil {
+				homepage = homeURL.String()
+			}
+			repoURL := r.GetRepository()
+			if repoURL != nil {
+				repo = repoURL.String()
+			}
+			registryURL := r.GetRegistry()
+			if registryURL != nil {
+				registry = registryURL.String()
+			}
+			docsURL := r.GetDocumentation()
+			if docsURL != nil {
+				docs = docsURL.String()
+			}
+
+			urls := lo.Map(r.Links, func(item api.Link, _ int) strLink {
+				return strLink{
+					Type: item.Type,
+					URL:  item.URL.String(),
+				}
+			})
+
+			var url string
+			if r.InitialQueryURL != nil {
+				url = r.InitialQueryURL.String()
+			}
+
+			info := DocInfo{
+				Type:       r.InitialQueryType,
+				URL:        url,
+				Homepage:   homepage,
+				Repository: repo,
+				Registry:   registry,
+				Document:   docs,
+				URLs:       urls,
+			}
+
+			b, err := json.Marshal(info)
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
