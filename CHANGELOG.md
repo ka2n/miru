@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.20](https://github.com/ka2n/miru/compare/v0.0.19...v0.0.20) - 2025-05-02
+### Other Changes
+- fix(mcp): broken `fetch_library_urls` tool by @ka2n in https://github.com/ka2n/miru/pull/60
+
 ## [v0.0.19](https://github.com/ka2n/miru/compare/v0.0.18...v0.0.19) - 2025-04-30
 ### New Features
 - feat(mcp/fetch_library_docs): fetch documentation as markdown by @ka2n in https://github.com/ka2n/miru/pull/58
