@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.21](https://github.com/ka2n/miru/compare/v0.0.20...v0.0.21) - 2025-05-27
+### New Features
+- feat: Update MCP tool response format, remove urls tool by @ka2n in https://github.com/ka2n/miru/pull/62
+
 ## [v0.0.20](https://github.com/ka2n/miru/compare/v0.0.19...v0.0.20) - 2025-05-02
 ### Other Changes
 - fix(mcp): broken `fetch_library_urls` tool by @ka2n in https://github.com/ka2n/miru/pull/60
