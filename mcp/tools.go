@@ -205,7 +205,12 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				return mcp.NewToolResultText(string(b)), nil
+				return mcp.NewToolResultResource("readme", mcp.TextResourceContents{
+					URI:      result.GetRepository().String(),
+					MIMEType: "text/markdown",
+					Text:     string(b),
+				}), nil
+				//return mcp.NewToolResultText(string(b)), nil
 
 			case "documentation":
 				// Get documentation URL
@@ -220,7 +225,12 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				return mcp.NewToolResultText(html), nil
+				return mcp.NewToolResultResource("readme", mcp.TextResourceContents{
+					URI:      docURL.String(),
+					MIMEType: "text/markdown",
+					Text:     html,
+				}), nil
+				//return mcp.NewToolResultText(html), nil
 
 			case "homepage":
 				// Get homepage URL
@@ -235,7 +245,12 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				return mcp.NewToolResultText(html), nil
+				return mcp.NewToolResultResource("homepage", mcp.TextResourceContents{
+					URI:      homepageURL.String(),
+					MIMEType: "text/markdown",
+					Text:     html,
+				}), nil
+				//return mcp.NewToolResultText(html), nil
 
 			case "registry":
 				// Get registry URL
@@ -250,7 +265,12 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				return mcp.NewToolResultText(html), nil
+				return mcp.NewToolResultResource("registry", mcp.TextResourceContents{
+					URI:      registryURL.String(),
+					MIMEType: "text/markdown",
+					Text:     html,
+				}), nil
+				//return mcp.NewToolResultText(html), nil
 
 			case "repository":
 				// Get repository URL
@@ -265,7 +285,12 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
 
-				return mcp.NewToolResultText(html), nil
+				return mcp.NewToolResultResource("repository", mcp.TextResourceContents{
+					URI:      repoURL.String(),
+					MIMEType: "text/markdown",
+					Text:     html,
+				}), nil
+				//return mcp.NewToolResultText(html), nil
 
 			default:
 				return mcp.NewToolResultError("Invalid document type: " + docType), nil
