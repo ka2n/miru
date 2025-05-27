@@ -148,7 +148,6 @@ miru mcp
 
 #### Tools
 
-- **fetch_library_urls** Fetch library related URLs from repository or registry.
 - **fetch_library_docs** Fetch library documentation content and other links from repository or registry.
 
 ## Configuration
