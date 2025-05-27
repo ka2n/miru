@@ -29,7 +29,7 @@ func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 			mcp.WithDescription("Fetch library documentation content and other links from repository or registry."),
 			mcp.WithString("package", mcp.Required(), mcp.Description(`Package name or repository path.
 For example:
-- For GitHub repositry: "github.com/user/repo"
+- For GitHub repository: "github.com/user/repo"
 - For JavaScript: "express", along with "lang" parameter set to "npm"
 `)),
 			mcp.WithString("lang", mcp.Description(`Language hint.
