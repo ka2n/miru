@@ -26,10 +26,23 @@ func InitTools() []server.ServerTool {
 func SearchDocumentation() (tool mcp.Tool, handler server.ToolHandlerFunc) {
 	return mcp.NewTool(
 			"fetch_library_docs",
-			mcp.WithDescription("Fetch library documentation content and other links from repository or registry"),
-			mcp.WithString("package", mcp.Required(), mcp.Description("Package name")),
-			mcp.WithString("lang", mcp.Description("Language hint (e.g. go, js, ruby, rust)")),
-			mcp.WithString("type_of_document", mcp.Description("Documentation type (e.g. readme, documentation, homepage, registry, repository)")),
+			mcp.WithDescription("Fetch library documentation content and other links from repository or registry."),
+			mcp.WithString("package", mcp.Required(), mcp.Description(`Package name or repository path.
+For example:
+- For GitHub repositry: "github.com/user/repo"
+- For JavaScript: "express", along with "lang" parameter set to "npm"
+`)),
+			mcp.WithString("lang", mcp.Description(`Language hint.
+Supported languages include: go, js/typescript, rust, ruby, python, php, and more.
+`)),
+			mcp.WithString("type_of_document", mcp.Description(`Documentation type.
+Available document types:
+- readme: Package README file
+- documentation: Official documentation
+- homepage: Package homepage
+- registry: Package registry page
+- repository: Source code repository
+`)),
 		), func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			type ToolArguments struct {
 				Package string `json:"package" validate:"required"`
