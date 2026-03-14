@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.22](https://github.com/ka2n/miru/compare/v0.0.21...v0.0.22) - 2026-03-14
+### Other Changes
+- feat: Add Nix flake for installation by @ka2n in https://github.com/ka2n/miru/pull/65
+
 ## [v0.0.21](https://github.com/ka2n/miru/compare/v0.0.20...v0.0.21) - 2025-05-27
 ### New Features
 - feat: Update MCP tool response format, remove urls tool by @ka2n in https://github.com/ka2n/miru/pull/62
