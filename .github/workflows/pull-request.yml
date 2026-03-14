@@ -29,11 +29,24 @@ jobs:
       - name: go test
         run: go test ./...
 
+  nix-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: cachix/install-nix-action@1ca7d21a94afc7c957383a2d217460d980de4934 # v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: nix build .#miru
+
   status-check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
       - test
-    if: failure()
+      - nix-build
+    if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     steps:
       - run: exit 1

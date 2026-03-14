@@ -64,6 +64,16 @@ wget https://github.com/ka2n/miru/releases/download/v${MIRU_VERSION}/miru_${MIRU
 apk add --allow-untrusted ./miru_$MIRU_VERSION-1_amd64.apk
 ```
 
+#### Nix
+
+```bash
+# Run directly
+nix run github:ka2n/miru
+
+# Install to profile
+nix profile install github:ka2n/miru
+```
+
 #### Debian/Ubuntu
 
 ```bash
