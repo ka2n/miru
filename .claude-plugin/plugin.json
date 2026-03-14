@@ -1,0 +1,11 @@
+{
+  "name": "miru",
+  "description": "Look up library documentation, README, repository, registry, and homepage URLs for any package across multiple languages",
+  "version": "1.0.0",
+  "author": {
+    "name": "ka2n"
+  },
+  "repository": "https://github.com/ka2n/miru",
+  "license": "MIT",
+  "keywords": ["documentation", "library", "package", "registry", "readme"]
+}

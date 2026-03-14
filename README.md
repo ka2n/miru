@@ -150,6 +150,14 @@ miru mcp
 
 - **fetch_library_docs** Fetch library documentation content and other links from repository or registry.
 
+### Claude Code Skill
+
+miru is available as a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills). Install with:
+
+```bash
+npx skills add ka2n/miru
+```
+
 ## Configuration
 
 Browser integration can be configured through environment variables:
