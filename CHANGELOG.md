@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.23](https://github.com/ka2n/miru/compare/v0.0.22...v0.0.23) - 2026-03-26
+### Other Changes
+- feat: add GitHub repository metadata to JSON and markdown output by @ka2n in https://github.com/ka2n/miru/pull/66
+
 ## [v0.0.22](https://github.com/ka2n/miru/compare/v0.0.21...v0.0.22) - 2026-03-14
 ### Other Changes
 - feat: Add Nix flake for installation by @ka2n in https://github.com/ka2n/miru/pull/65
