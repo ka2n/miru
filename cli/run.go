@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/browser"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -239,7 +240,10 @@ func displayDocumentation(i api.InitialQuery, load loadFunc, logger io.Writer) e
 
 	// Check if stdout is a terminal
 	if !isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		// If not a terminal, print content directly to stdout
+		// If not a terminal, print content with YAML frontmatter
+		if err := writeFrontmatter(os.Stdout, r); err != nil {
+			return failure.Wrap(err)
+		}
 		fmt.Fprintln(os.Stdout, out)
 		return nil
 	}
@@ -291,13 +295,14 @@ func displayJSON(i api.InitialQuery, r api.Result, writer io.Writer) error {
 
 	// DocInfo represents the JSON output structure
 	type DocInfo struct {
-		Type       source.Type `json:"type"`
-		URL        string      `json:"url"`
-		Homepage   string      `json:"homepage,omitempty"`
-		Repository string      `json:"repository,omitempty"`
-		Registry   string      `json:"registry,omitempty"`
-		Document   string      `json:"document,omitempty"`
-		URLs       []strLink   `json:"urls"`
+		Type       source.Type    `json:"type"`
+		URL        string         `json:"url"`
+		Homepage   string         `json:"homepage,omitempty"`
+		Repository string         `json:"repository,omitempty"`
+		Registry   string         `json:"registry,omitempty"`
+		Document   string         `json:"document,omitempty"`
+		URLs       []strLink      `json:"urls"`
+		Metadata   map[string]any `json:"metadata,omitempty"`
 	}
 
 	var (
@@ -336,6 +341,11 @@ func displayJSON(i api.InitialQuery, r api.Result, writer io.Writer) error {
 		url = r.InitialQueryURL.String()
 	}
 
+	var metadata map[string]any
+	if len(r.Metadata) > 0 {
+		metadata = r.Metadata
+	}
+
 	info := DocInfo{
 		Type:       r.InitialQueryType,
 		URL:        url,
@@ -344,12 +354,59 @@ func displayJSON(i api.InitialQuery, r api.Result, writer io.Writer) error {
 		Registry:   registry,
 		Document:   docs,
 		URLs:       urls,
+		Metadata:   metadata,
 	}
 
 	enc := json.NewEncoder(writer)
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(info); err != nil {
+		return failure.Wrap(err)
+	}
+	return nil
+}
+
+// writeFrontmatter writes YAML frontmatter containing metadata and selected URL fields to the writer.
+func writeFrontmatter(w io.Writer, r api.Result) error {
+	fm := make(map[string]any)
+
+	// Add URL information
+	if r.InitialQueryURL != nil {
+		fm["url"] = r.InitialQueryURL.String()
+	}
+	if u := r.GetRepository(); u != nil {
+		fm["repository"] = u.String()
+	}
+	if u := r.GetRegistry(); u != nil {
+		fm["registry"] = u.String()
+	}
+	if u := r.GetHomepage(); u != nil {
+		fm["homepage"] = u.String()
+	}
+
+	// Merge metadata (URL keys take precedence over metadata keys)
+	for k, v := range r.Metadata {
+		if _, exists := fm[k]; !exists {
+			fm[k] = v
+		}
+	}
+
+	if len(fm) == 0 {
+		return nil
+	}
+
+	data, err := yaml.Marshal(fm)
+	if err != nil {
+		return failure.Wrap(err)
+	}
+
+	if _, err := fmt.Fprintln(w, "---"); err != nil {
+		return failure.Wrap(err)
+	}
+	if _, err := w.Write(data); err != nil {
+		return failure.Wrap(err)
+	}
+	if _, err := fmt.Fprintln(w, "---"); err != nil {
 		return failure.Wrap(err)
 	}
 	return nil

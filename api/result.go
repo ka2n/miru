@@ -13,6 +13,9 @@ type Result struct {
 	InitialQueryURL  *url.URL
 	InitialQueryType source.Type
 	Links            []Link
+
+	// Metadata contains repository metadata (e.g., stars, license, last updated)
+	Metadata map[string]any
 }
 
 type Link struct {
@@ -24,6 +27,7 @@ type Link struct {
 func CreateResult(inv *Investigation) Result {
 	var result Result
 	result.Links = make([]Link, 0, len(inv.CollectedData))
+	result.Metadata = make(map[string]any)
 
 	// Check if README content is available in the collected data
 	for _, data := range inv.CollectedData {
@@ -40,6 +44,11 @@ func CreateResult(inv *Investigation) Result {
 			Type: data.Source.Type,
 			URL:  data.BrowserURL,
 		})
+
+		// Merge metadata from all sources
+		for k, v := range data.Metadata {
+			result.Metadata[k] = v
+		}
 	}
 
 	// Get data from the source type of the initial query

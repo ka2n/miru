@@ -14,27 +14,31 @@ import (
 
 // npmPackageInfo represents the npm package information from registry
 type npmPackageInfo struct {
-	Readme     string `json:"readme"`
-	Homepage   string `json:"homepage"`
-	Repository struct {
+	Readme      string   `json:"readme"`
+	Homepage    string   `json:"homepage"`
+	Description string   `json:"description"`
+	License     any      `json:"license"`
+	Keywords    []string `json:"keywords"`
+	Repository  struct {
 		Type string `json:"type"`
 		URL  string `json:"url"`
 	} `json:"repository"`
+	DistTags map[string]string `json:"dist-tags"`
 }
 
 // fetchNPM fetches the README content from npm registry
 // Returns the content, related sources, and any error
-func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchNPM(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Get package information from npm registry
 	url := fmt.Sprintf("https://registry.npmjs.org/%s", pkgPath)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, failure.New(ErrRepositoryNotFound,
+		return "", nil, nil, failure.New(ErrRepositoryNotFound,
 			failure.Message("Failed to fetch package information from npm registry"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -45,7 +49,7 @@ func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
 	// Parse JSON response
 	var info npmPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Extract related sources from content and API response
@@ -84,16 +88,38 @@ func fetchNPM(pkgPath string) (string, []source.RelatedReference, error) {
 	docSources := extractRelatedSources(info.Readme, pkgPath)
 	sources = append(sources, docSources...)
 
-	return info.Readme, sources, nil
+	// Build metadata
+	metadata := map[string]any{}
+	if info.Description != "" {
+		metadata["description"] = info.Description
+	}
+	if info.License != nil {
+		// license can be a string or an object with "type" field
+		switch v := info.License.(type) {
+		case string:
+			metadata["license"] = v
+		case map[string]any:
+			if t, ok := v["type"].(string); ok {
+				metadata["license"] = t
+			}
+		}
+	}
+	if len(info.Keywords) > 0 {
+		metadata["keywords"] = info.Keywords
+	}
+	if v, ok := info.DistTags["latest"]; ok {
+		metadata["version"] = v
+	}
+
+	return info.Readme, sources, metadata, nil
 }
 
 // Implementation of NPM Investigator
 type NPMInvestigator struct{}
 
 func (i *NPMInvestigator) Fetch(packagePath string) (source.Data, error) {
-
 	// Process to retrieve data from NPM
-	content, RelatedSources, err := fetchNPM(packagePath)
+	content, RelatedSources, metadata, err := fetchNPM(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -103,6 +129,7 @@ func (i *NPMInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: RelatedSources,
 		BrowserURL:     browserURL,

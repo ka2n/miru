@@ -36,17 +36,17 @@ type packagistPackageInfo struct {
 
 // fetchPackagist fetches the README content from Packagist registry
 // Returns the content, related sources, and any error
-func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchPackagist(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Get package information from Packagist API
 	url := fmt.Sprintf("https://packagist.org/packages/%s.json", pkgPath)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, failure.New(ErrRepositoryNotFound,
+		return "", nil, nil, failure.New(ErrRepositoryNotFound,
 			failure.Message("Failed to fetch package information from packagist.org"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -57,7 +57,7 @@ func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 	// Parse JSON response
 	var info packagistPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Packagist does not have a README file, but it has a description
@@ -72,7 +72,7 @@ func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 
 		// If still no description, return an error
 		if info.Package.Description == "" {
-			return "", nil, failure.New(ErrPackagistREADMENotFound,
+			return "", nil, nil, failure.New(ErrPackagistREADMENotFound,
 				failure.Message("README not found in package"),
 				failure.Context{
 					"pkg": pkgPath,
@@ -131,7 +131,13 @@ func fetchPackagist(pkgPath string) (string, []source.RelatedReference, error) {
 	docSources := extractRelatedSources(info.Package.Description, pkgPath)
 	sources = append(sources, docSources...)
 
-	return info.Package.Description, sources, nil
+	// Build metadata
+	metadata := map[string]any{}
+	if info.Package.Description != "" {
+		metadata["description"] = info.Package.Description
+	}
+
+	return info.Package.Description, sources, metadata, nil
 }
 
 // Implementation of Packagist Investigator
@@ -139,7 +145,7 @@ type PackagistInvestigator struct{}
 
 func (i *PackagistInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from packagist.org
-	content, RelatedSources, err := fetchPackagist(packagePath)
+	content, RelatedSources, metadata, err := fetchPackagist(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -149,6 +155,7 @@ func (i *PackagistInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: RelatedSources,
 		BrowserURL:     browserURL,
