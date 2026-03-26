@@ -17,17 +17,18 @@ const (
 )
 
 // fetchPkgGoDev fetches the README file from pkg.go.dev or the source repository
-func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// https://pkg.go.dev/cmd/go#hdr-Remote_import_paths
 	if strings.Contains(pkgPath, "github.com/") {
 		return fetchGitHub(pkgPath)
 	} else if strings.Contains(pkgPath, "gitlab.com/") {
-		return fetchGitlab(pkgPath)
+		content, sources, err := fetchGitlab(pkgPath)
+		return content, sources, nil, err
 	}
 
 	repo, home, err := detectGoMetadata(pkgPath, nil)
 	if repo == nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	// Get Readme content from the repository
@@ -40,10 +41,11 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 	if sourceRepoURL != nil {
 		var content string
 		var sources []source.RelatedReference
+		var metadata map[string]any
 		var err error
 
 		if strings.Contains(sourceRepoURL.String(), "github.com") {
-			content, sources, err = fetchGitHub(sourceRepoURL.String())
+			content, sources, metadata, err = fetchGitHub(sourceRepoURL.String())
 		} else if strings.Contains(sourceRepoURL.String(), "gitlab.com") {
 			content, sources, err = fetchGitlab(sourceRepoURL.String())
 		} else {
@@ -51,7 +53,7 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 		}
 
 		if err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 
 		if home != nil {
@@ -79,10 +81,10 @@ func fetchPkgGoDev(pkgPath string) (string, []source.RelatedReference, error) {
 			From: "api",
 		})
 
-		return content, sources, nil
+		return content, sources, metadata, nil
 	}
 
-	return "", nil, failure.New(ErrPkgGoDevREADMENotFound,
+	return "", nil, nil, failure.New(ErrPkgGoDevREADMENotFound,
 		failure.Message("Package not found"),
 		failure.Context{
 			"pkg": pkgPath,
@@ -232,7 +234,7 @@ type GoPkgDevInvestigator struct{}
 
 func (i *GoPkgDevInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from pkg.go.dev
-	content, RelatedSources, err := fetchPkgGoDev(packagePath)
+	content, RelatedSources, metadata, err := fetchPkgGoDev(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -242,6 +244,7 @@ func (i *GoPkgDevInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: RelatedSources,
 		BrowserURL:     browserURL,

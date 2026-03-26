@@ -29,7 +29,23 @@ const (
 
 // githubRepoResponse represents the GitHub API response for repository information
 type githubRepoResponse struct {
-	Homepage string `json:"homepage"`
+	Homepage        string          `json:"homepage"`
+	Description     string          `json:"description"`
+	StargazersCount int             `json:"stargazers_count"`
+	ForksCount      int             `json:"forks_count"`
+	OpenIssuesCount int             `json:"open_issues_count"`
+	Archived        bool            `json:"archived"`
+	License         *githubLicense  `json:"license"`
+	Language        string          `json:"language"`
+	Topics          []string        `json:"topics"`
+	PushedAt        string          `json:"pushed_at"`
+	CreatedAt       string          `json:"created_at"`
+	DefaultBranch   string          `json:"default_branch"`
+}
+
+type githubLicense struct {
+	SPDXID string `json:"spdx_id"`
+	Name   string `json:"name"`
 }
 
 // githubContentsResponse represents the GitHub API response for repository contents
@@ -48,8 +64,8 @@ type githubContentResponse struct {
 }
 
 // fetchGitHub fetches the README content from a GitHub repository
-// Returns the content, related sources, and any error
-func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
+// Returns the content, related sources, metadata, and any error
+func fetchGitHub(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Strip ".*github.com/" prefix from package path
 	pos := strings.Index(pkgPath, "github.com/")
 	if pos != -1 {
@@ -64,7 +80,7 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Check if gh command exists
 	if _, err := exec.LookPath(ghCmd); err != nil {
-		return "", nil, failure.New(ErrGHCommandNotFound,
+		return "", nil, nil, failure.New(ErrGHCommandNotFound,
 			failure.Message(fmt.Sprintf("gh command not found at %s. Please install GitHub CLI: https://cli.github.com/ or set %s environment variable", ghCmd, EnvGHCommand)),
 			failure.Context{
 				"error": err.Error(),
@@ -76,7 +92,7 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 	// Extract owner and repo from package path (already trimmed of github.com/)
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) < 2 {
-		return "", nil, failure.New(ErrInvalidPackagePath,
+		return "", nil, nil, failure.New(ErrInvalidPackagePath,
 			failure.Message("Invalid GitHub package path"),
 			failure.Context{"path": pkgPath},
 		)
@@ -92,7 +108,7 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		repo = repo[:idx]
 	}
 	if repo == "" {
-		return "", nil, failure.New(ErrInvalidPackagePath,
+		return "", nil, nil, failure.New(ErrInvalidPackagePath,
 			failure.Message("Invalid GitHub package path"),
 			failure.Context{"path": pkgPath},
 		)
@@ -186,7 +202,7 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 
 	// Wait for all goroutines to complete
 	if err := g.Wait(); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	// Combine all sources
@@ -213,7 +229,38 @@ func fetchGitHub(pkgPath string) (string, []source.RelatedReference, error) {
 		}
 	}
 
-	return docContent, sources, nil
+	// Build metadata from repository info
+	metadata := map[string]any{
+		"stars":       info.StargazersCount,
+		"forks":       info.ForksCount,
+		"open_issues": info.OpenIssuesCount,
+	}
+	if info.Archived {
+		metadata["archived"] = true
+	}
+	if info.Description != "" {
+		metadata["description"] = info.Description
+	}
+	if info.Language != "" {
+		metadata["language"] = info.Language
+	}
+	if info.PushedAt != "" {
+		metadata["pushed_at"] = info.PushedAt
+	}
+	if info.CreatedAt != "" {
+		metadata["created_at"] = info.CreatedAt
+	}
+	if info.DefaultBranch != "" {
+		metadata["default_branch"] = info.DefaultBranch
+	}
+	if info.License != nil && info.License.SPDXID != "" {
+		metadata["license"] = info.License.SPDXID
+	}
+	if len(info.Topics) > 0 {
+		metadata["topics"] = info.Topics
+	}
+
+	return docContent, sources, metadata, nil
 }
 
 func (c githubContentResponse) GetContent() (io.Reader, error) {
@@ -235,7 +282,7 @@ type GitHubInvestigator struct{}
 
 func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from GitHub
-	content, rel, err := fetchGitHub(packagePath)
+	content, rel, metadata, err := fetchGitHub(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -245,6 +292,7 @@ func (i *GitHubInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: rel,
 		BrowserURL:     browserURL,
