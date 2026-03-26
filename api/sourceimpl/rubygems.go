@@ -34,17 +34,17 @@ type rubyGemsPackageInfo struct {
 
 // fetchRubyGemsReadme fetches the package information from RubyGems API
 // Returns the formatted documentation and related sources
-func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Get package information from RubyGems API
 	url := fmt.Sprintf("https://rubygems.org/api/v1/gems/%s.json", pkgPath)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, failure.New(ErrRepositoryNotFound,
+		return "", nil, nil, failure.New(ErrRepositoryNotFound,
 			failure.Message("Failed to fetch package information from rubygems.org"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -53,7 +53,7 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", nil, failure.New(ErrRubyGemsREADMENotFound,
+		return "", nil, nil, failure.New(ErrRubyGemsREADMENotFound,
 			failure.Message("Package not found"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -64,7 +64,7 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 	// Parse JSON response
 	var info rubyGemsPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Format the documentation text
@@ -119,7 +119,27 @@ func fetchRubyGemsReadme(pkgPath string) (string, []source.RelatedReference, err
 		}
 	}
 
-	return doc, uniqueSources, nil
+	// Build metadata
+	metadata := map[string]any{
+		"downloads": info.DownloadCount,
+	}
+	if info.Description != "" {
+		metadata["description"] = info.Description
+	}
+	if len(info.Licenses) > 0 {
+		metadata["license"] = strings.Join(info.Licenses, ", ")
+	}
+	if info.Version != "" {
+		metadata["version"] = info.Version
+	}
+	if info.Authors != "" {
+		metadata["authors"] = info.Authors
+	}
+	if info.Platform != "" {
+		metadata["platform"] = info.Platform
+	}
+
+	return doc, uniqueSources, metadata, nil
 }
 
 // formatRubyGemsDoc formats the RubyGems package information into a markdown document
@@ -176,7 +196,7 @@ type RubyGemsInvestigator struct{}
 
 func (i *RubyGemsInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from rubygems.org
-	content, RelatedSources, err := fetchRubyGemsReadme(packagePath)
+	content, RelatedSources, metadata, err := fetchRubyGemsReadme(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -186,6 +206,7 @@ func (i *RubyGemsInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: RelatedSources,
 		BrowserURL:     browserURL,

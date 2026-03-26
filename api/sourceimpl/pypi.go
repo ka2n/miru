@@ -23,12 +23,17 @@ type pypiPackageInfo struct {
 		ProjectURLs map[string]string `json:"project_urls"`
 		Description string            `json:"description"`
 		Homepage    string            `json:"home_page"`
+		Summary     string            `json:"summary"`
+		License     string            `json:"license"`
+		Version     string            `json:"version"`
+		Author      string            `json:"author"`
+		Keywords    string            `json:"keywords"`
 	} `json:"info"`
 }
 
 // fetchPyPI fetches the README content from PyPI registry
 // Returns the content, related sources, and any error
-func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchPyPI(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Extract only the package name (remove organization name if present)
 	pkgName := pkgPath
 	if idx := strings.LastIndex(pkgPath, "/"); idx != -1 {
@@ -39,12 +44,12 @@ func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
 	url := fmt.Sprintf("https://pypi.org/pypi/%s/json", pkgName)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", nil, failure.New(ErrRepositoryNotFound,
+		return "", nil, nil, failure.New(ErrRepositoryNotFound,
 			failure.Message("Failed to fetch package information from pypi.org"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -55,12 +60,12 @@ func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
 	// Parse JSON response
 	var info pypiPackageInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Description is used as README
 	if info.Info.Description == "" {
-		return "", nil, failure.New(ErrPyPIREADMENotFound,
+		return "", nil, nil, failure.New(ErrPyPIREADMENotFound,
 			failure.Message("README not found in package"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -127,7 +132,25 @@ func fetchPyPI(pkgPath string) (string, []source.RelatedReference, error) {
 	docSources := extractRelatedSources(info.Info.Description, pkgPath)
 	sources = append(sources, docSources...)
 
-	return info.Info.Description, sources, nil
+	// Build metadata
+	metadata := map[string]any{}
+	if info.Info.Summary != "" {
+		metadata["description"] = info.Info.Summary
+	}
+	if info.Info.License != "" {
+		metadata["license"] = info.Info.License
+	}
+	if info.Info.Version != "" {
+		metadata["version"] = info.Info.Version
+	}
+	if info.Info.Author != "" {
+		metadata["authors"] = info.Info.Author
+	}
+	if info.Info.Keywords != "" {
+		metadata["keywords"] = strings.Split(info.Info.Keywords, ",")
+	}
+
+	return info.Info.Description, sources, metadata, nil
 }
 
 // Implementation of PyPI Investigator
@@ -135,7 +158,7 @@ type PyPIInvestigator struct{}
 
 func (i *PyPIInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from pypi.org
-	content, RelatedSources, err := fetchPyPI(packagePath)
+	content, RelatedSources, metadata, err := fetchPyPI(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -145,6 +168,7 @@ func (i *PyPIInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: RelatedSources,
 		BrowserURL:     browserURL,

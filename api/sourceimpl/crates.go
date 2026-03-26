@@ -41,17 +41,17 @@ type cratesVersionInfo struct {
 
 // fetchCratesIO fetches the README content from crates.io
 // Returns the content, related sources, and any error
-func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
+func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, map[string]any, error) {
 	// Get package information from crates.io API
 	url := fmt.Sprintf("https://crates.io/api/v1/crates/%s?include=default_version", pkgPath)
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", nil, failure.New(ErrRepositoryNotFound,
+		return "", nil, nil, failure.New(ErrRepositoryNotFound,
 			failure.Message("Failed to fetch package information from crates.io"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -65,7 +65,7 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 		Versions []cratesVersionInfo `json:"versions"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	info := response.Crate
@@ -80,7 +80,7 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	}
 
 	if defaultVersion == nil || defaultVersion.ReadmePath == "" {
-		return "", nil, failure.New(ErrCratesREADMENotFound,
+		return "", nil, nil, failure.New(ErrCratesREADMENotFound,
 			failure.Message("README not found in package"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -91,12 +91,12 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	readmeURL := fmt.Sprintf("https://crates.io%s", defaultVersion.ReadmePath)
 	readmeResp, err := http.Get(readmeURL)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 	defer readmeResp.Body.Close()
 
 	if readmeResp.StatusCode == http.StatusNotFound {
-		return "", nil, failure.New(ErrCratesREADMENotFound,
+		return "", nil, nil, failure.New(ErrCratesREADMENotFound,
 			failure.Message("README not found"),
 			failure.Context{
 				"pkg": pkgPath,
@@ -108,14 +108,14 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	// Read HTML content
 	htmlContent, err := io.ReadAll(readmeResp.Body)
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Convert HTML to Markdown
 	converter := md.NewConverter("", true, nil)
 	markdown, err := converter.ConvertString(string(htmlContent))
 	if err != nil {
-		return "", nil, failure.Wrap(err)
+		return "", nil, nil, failure.Wrap(err)
 	}
 
 	// Format the documentation text
@@ -212,7 +212,25 @@ func fetchCratesIO(pkgPath string) (string, []source.RelatedReference, error) {
 	docSources := extractRelatedSources(doc, pkgPath)
 	sources = append(sources, docSources...)
 
-	return doc, sources, nil
+	// Build result metadata
+	resultMeta := map[string]any{}
+	if info.Description != "" {
+		resultMeta["description"] = info.Description
+	}
+	if defaultVersion.License != "" {
+		resultMeta["license"] = defaultVersion.License
+	}
+	if info.DefaultVersion != "" {
+		resultMeta["version"] = info.DefaultVersion
+	}
+	if len(info.Categories) > 0 {
+		resultMeta["categories"] = info.Categories
+	}
+	if len(info.Keywords) > 0 {
+		resultMeta["keywords"] = info.Keywords
+	}
+
+	return doc, sources, resultMeta, nil
 }
 
 // Implementation of CratesIO Investigator
@@ -220,7 +238,7 @@ type CratesIOInvestigator struct{}
 
 func (i *CratesIOInvestigator) Fetch(packagePath string) (source.Data, error) {
 	// Process to retrieve data from crates.io
-	content, relatedSources, err := fetchCratesIO(packagePath)
+	content, relatedSources, metadata, err := fetchCratesIO(packagePath)
 	if err != nil {
 		return source.Data{}, err
 	}
@@ -230,6 +248,7 @@ func (i *CratesIOInvestigator) Fetch(packagePath string) (source.Data, error) {
 
 	return source.Data{
 		Contents:       map[string]string{"README.md": content},
+		Metadata:       metadata,
 		FetchedAt:      time.Now(),
 		RelatedSources: relatedSources,
 		BrowserURL:     browserURL,
