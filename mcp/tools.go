@@ -35,7 +35,7 @@ For example:
 			mcp.WithString("lang", mcp.Description(`Language hint.
 Supported languages include: go, js/typescript, rust, ruby, python, php, and more.
 `)),
-			mcp.WithString("type_of_document", mcp.Description(`Documentation type.
+			mcp.WithString("type_of_document", mcp.Description(`Documentation type. Defaults to "readme" when omitted.
 Available document types:
 - readme: Package README file
 - documentation: Official documentation
@@ -86,12 +86,11 @@ Available document types:
 
 			result := api.CreateResult(investigation)
 
-			// Default to readme if doc_type is not specified
 			docType := strings.ToLower(args.DocType)
 
 			// Handle different document types
 			switch docType {
-			case "readme":
+			case "", "readme":
 				return mcp.NewToolResultResource("README", mcp.TextResourceContents{
 					MIMEType: "text/markdown",
 					Text:     result.README,

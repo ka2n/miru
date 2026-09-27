@@ -109,6 +109,7 @@ miru [package] -b=[target]                 # Open specific documentation in brow
 miru [lang] [package]             # Specify package language explicitly
 miru [package] --lang [lang]      # Specify package language with flag
 miru [package] -o json           # Output metadata in JSON format
+miru --skill                     # Print usage guide for AI agents
 ```
 
 Examples:
@@ -160,13 +161,17 @@ miru mcp
 
 - **fetch_library_docs** Fetch library documentation content and other links from repository or registry.
 
-### Claude Code Skill
+### Agent Skill
 
-miru is available as a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills). Install with:
+miru ships an [agent skill](https://github.com/vercel-labs/skills) for Claude Code, Codex, and other coding agents. Install it with [`npx skills`](https://github.com/vercel-labs/skills):
 
 ```bash
-npx skills add ka2n/miru
+npx skills add ka2n/miru                        # interactive (choose agents and scope)
+npx skills add ka2n/miru -g                     # user-level instead of project-level
+npx skills add ka2n/miru -g -a claude-code -a codex -y
 ```
+
+The skill contains only the frontmatter; its body is provided by `miru --skill` at runtime, so the `miru` binary must be installed and on `PATH`. Claude Code inlines the output when the skill loads, and other agents run `miru --skill` themselves. Codex runs commands in a login shell, so make sure `miru` is on the login shell's `PATH` too.
 
 ## Configuration
 
