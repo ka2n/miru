@@ -109,6 +109,7 @@ miru [package] -b=[target]                 # Open specific documentation in brow
 miru [lang] [package]             # Specify package language explicitly
 miru [package] --lang [lang]      # Specify package language with flag
 miru [package] -o json           # Output metadata in JSON format
+miru --skill                     # Print usage guide for AI agents
 ```
 
 Examples:
@@ -167,6 +168,8 @@ miru is available as a [Claude Code skill](https://docs.anthropic.com/en/docs/cl
 ```bash
 npx skills add ka2n/miru
 ```
+
+The skill body is provided by `miru --skill` at runtime, so the `miru` binary must be installed and on `PATH` for the skill to work.
 
 ## Configuration
 

@@ -26,6 +26,7 @@ var (
 	browserFlg browseTargetFlag
 	langFlg    string
 	outputFlag string
+	skillFlg   bool
 
 	rootCmd    *cobra.Command
 	versionCmd *cobra.Command
@@ -56,6 +57,10 @@ terminal and browser.`,
 				return nil
 			}
 
+			if skillFlg {
+				return nil
+			}
+
 			// Validate the number of arguments
 			return cobra.RangeArgs(1, 2)(cmd, args)
 		},
@@ -66,6 +71,7 @@ terminal and browser.`,
 	rootCmd.Flag("browser").NoOptDefVal = "default"
 	rootCmd.Flags().StringVarP(&langFlg, "lang", "l", "", "Specify package language explicitly")
 	rootCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json)")
+	rootCmd.Flags().BoolVar(&skillFlg, "skill", false, "Print usage guide for AI agents (SKILL.md body)")
 
 	// Version command
 	versionCmd = &cobra.Command{
@@ -137,6 +143,11 @@ func Run() error {
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
+	if skillFlg {
+		fmt.Fprint(cmd.OutOrStdout(), renderSkillGuide())
+		return nil
+	}
+
 	var pkg string
 	var specifiedLang string
 	logOut := cmd.OutOrStderr()
