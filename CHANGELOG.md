@@ -1,5 +1,7 @@
 # Changelog
 
+## [v0.0.24](https://github.com/ka2n/miru/compare/v0.0.23...v0.0.24) - 2026-09-28
+
 ## [v0.0.23](https://github.com/ka2n/miru/compare/v0.0.22...v0.0.23) - 2026-09-27
 ### Other Changes
 - feat: add GitHub repository metadata to JSON and markdown output by @ka2n in https://github.com/ka2n/miru/pull/66
